@@ -77,6 +77,45 @@ Este conjunto de funciones libres y estructuras define cómo se interpretan los 
 *   **`std::optional<std::vector<std::uint8_t>> parseHexBytesFile(const std::string& fileContent)`**:
     *   *Acción*: Lee el contenido de un archivo de texto, ignora comentarios (# o //) y espacios, y convierte los valores hexadecimales textuales en un buffer binario real para inyectar tráfico.
 
+
+### Cómo `ethernet.cpp` representa el protocolo
+
+`ethernet.cpp` junto con `ethernet.h` modelan Ethernet II aplicando una correspondencia directa entre los campos de la especificación y las estructuras/funciones del código:
+
+- `EthernetFrame` : estructura que contiene `dst` (6 bytes), `src` (6 bytes), `etherType` (2 bytes) y `payload` (vector de bytes). Representa una trama Ethernet completa tal como la ve la aplicación.
+- `macToString()` / `parseMac()` : utilidades para convertir MACs binarias <-> representación hexadecimal legible, usadas en logs y en la UI.
+- `toHex()` : genera un volcado hexadecimal legible del `payload` o de cualquier buffer para mostrar en los paneles y en `custom_packet.hex`.
+- `parseEthernetII(const uint8_t* data, size_t size)` : toma un buffer crudo recibido (p. ej. desde `tap.read()`), valida que haya al menos 14 bytes y separa los primeros 14 bytes en `dst`, `src` y `etherType`, devolviendo el `payload` restante en el `EthernetFrame`.
+- `serializeEthernetII(const EthernetFrame&)` : empaqueta una instancia de `EthernetFrame` a una secuencia plana de bytes lista para enviar por el TAP. Concatena la cabecera (6+6+2) y el `payload`, y aplica *padding* hasta 46 bytes de `payload` cuando es necesario. No añade FCS/CRC — eso lo hace el driver/hardware.
+- `describeEthernetII(const EthernetFrame&)` : construye una cadena resumen ("origen -> destino, tipo, tamaño") pensada para logs y la TUI.
+- `parseHexBytesFile()` : convierte el contenido textual de `custom_packet.hex` en bytes binarios para cargar paquetes custom desde el editor.
+
+Flujo típico en la aplicación:
+
+1. Llegan bytes desde el kernel vía TAP (`tap.read()`).
+2. `parseEthernetII()` transforma esos bytes en un `EthernetFrame` (si el tamaño es válido).
+3. La TUI usa `describeEthernetII()` y `toHex()` para renderizar la línea del log y los paneles (hex + ASCII + campos).
+4. Si el usuario edita o carga un paquete custom, `parseHexBytesFile()` produce un `EthernetFrame` en memoria.
+5. Para enviar, la app llama a `serializeEthernetII()` y escribe los bytes resultantes con `tap.write()`; el kernel/driver añade FCS y procesa físicamente la trama.
+
+Ejemplo mínimo de uso:
+
+```cpp
+auto opt = parseEthernetII(buf, n);
+if (opt) {
+    EthernetFrame frame = *opt;
+    std::string summary = describeEthernetII(frame);
+    std::vector<uint8_t> bytes = serializeEthernetII(frame);
+    tap.write(bytes.data(), bytes.size());
+}
+```
+
+Notas importantes:
+
+- El padding a 46 bytes de `payload` asegura el tamaño mínimo de trama (60 bytes visibles por la aplicación). El FCS/CRC de 4 bytes queda fuera del espacio de usuario.
+- `parseEthernetII()` no intenta reconstruir FCS ni validar CRC; confía en que el driver entregó una trama completa.
+- Estas funciones permiten separar con claridad la representación en memoria (estructuras C++) de la representación en el medio físico (buffer de bytes), lo que facilita su uso por la TUI, por las rutinas de logging y por las acciones de inyección (`[c]`, `[s]`, `[d]`).
+
 ---
 
 ## 3. Flujo de Datos y Configuración del Sistema
@@ -178,11 +217,11 @@ La interfaz se adapta automáticamente al tamaño de la terminal:
 ┌──────────────────────────── Header ────────────────────────────┐
 │ NetGui-Tool (TUI) - tap0 - Estado: Listo                       │
 └────────────────────────────────────────────────────────────────┘
-┌───── Desglose Trama TX/RX (compacto) ───────────────────────────┐
+┌───── Desglose Trama TX/RX (compacto) ──────────────────────────┐
 │ Dst: FF FF FF FF FF FF | ff:ff:ff:ff:ff:ff                     │
 │ Src: 02 00 00 00 00 01 | 02:00:00:00:00:01                     │
 │ Type: 88 B5 | 0x88B5 (Demo)                                    │
-│ Payload: 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ...  │
+│ Payload: 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ...   │
 │ Total: 60 bytes (14 header + 46 payload)                       │
 └────────────────────────────────────────────────────────────────┘
 ┌─ Último TX ─┐┌────────── Log ──────────────────┐┌─ Último RX ─┐
@@ -190,8 +229,8 @@ La interfaz se adapta automáticamente al tamaño de la terminal:
 │ Src: 02:... ││ [TX] Enviado...                 ││ Src: aa:... │
 │ Tipo: 0x88B5││ [INFO] Custom cargado           ││ Tipo: 0x86D │
 │ Payload:    ││ [WARN] No respuesta             ││ Payload:    │
-│ 0000: 42 00││ ...                             ││ 0000: 60 00 │
-│ 0010: 00 00││                                 ││ 0010: 00 1E │
+│ 0000: 42 00 ││ ...                             ││ 0000: 60 00 │
+│ 0010: 00 00 ││                                 ││ 0010: 00 1E │
 │ ...         ││                                 ││ ...         │
 └─────────────┘└─────────────────────────────────┘└─────────────┘
 ```
@@ -311,258 +350,147 @@ sudo ip route add 192.168.100.0/24 dev tap0
 ```
 
 ### Prueba 1: Ping (Protocolo ICMP)
+# Documentación técnica (refactorizada)
 
-```bash
-# En otra terminal (mientras la app TUI corre):
-ping -I tap0 192.168.100.1
-```
+Resumen: guía compacta y esquemática del diseño, API y flujo de datos de la herramienta. Mantiene todos los detalles técnicos importantes (TAP, Ethernet II, TUI, ejemplos y pruebas).
 
-**Qué verás en la app**:
-```
-[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
-[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=IPv4  payload=84 bytes
-```
+## A. TAP (include/tap.h, src/tap.cpp)
 
-**Explicación**:
-1. Primero el kernel envía un **ARP request** buscando quién tiene la IP 192.168.100.1 (broadcast a ff:ff:ff:ff:ff:ff)
-2. Como nadie responde, envía el **ICMP Echo Request** (ping) de todas formas
+Propósito: crear y usar una interfaz virtual TAP (Ethernet L2) para leer/escribir tramas desde/hacia el kernel.
 
-**Qué puedes hacer**:
-- Presiona `[x]` para guardar el paquete ARP o ICMP como custom
-- Presiona `[c]` para reinyectarlo al kernel (loop de prueba)
+Estado y API clave
+- `int fd`: descriptor abierto sobre `/dev/net/tun`.
+- `std::string dev_name()`: nombre real de la interfaz (p. ej. `tap0`).
+- `TapDevice(const std::string& name)`: constructor que configura `IFF_TAP | IFF_NO_PI` vía `ioctl`.
+- `~TapDevice()`: cierra `fd`.
+- `setNonBlocking(bool)`: activa `O_NONBLOCK` si procede.
+- `int read(unsigned char* buf, size_t n)`: devuelve bytes leídos o -1.
+- `int write(unsigned char* buf, size_t n)`: escribe bytes al TAP.
 
-### Prueba 2: ARP Probing (Protocolo ARP)
+Notas operativas
+- El programa asume que la interfaz existe y está `up` (ver sección de configuración).
+- Operaciones no bloqueantes retornan inmediatamente cuando no hay datos.
 
-```bash
-# Instala arping si no lo tienes
-sudo apt install arping
+## B. Ethernet (include/ethernet.h, src/ethernet.cpp)
 
-# Lanzar solicitud ARP
-sudo arping -I tap0 -c 3 192.168.100.200
-```
+Modelado y tipos
+- `using MacAddress = std::array<uint8_t,6>`
+- `struct EthernetFrame { MacAddress dst, src; uint16_t etherType; std::vector<uint8_t> payload; }`
+- `namespace EtherType` contiene constantes (`IPv4`, `ARP`, `IPv6`, `Demo`).
 
-**Qué verás**:
-```
-[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
-[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
-[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
-```
+Funciones principales (qué hacen y cuándo usarlas)
+- `parseEthernetII(const uint8_t* data, size_t size) -> optional<EthernetFrame>`: valida >=14 bytes, separa dst/src/etherType y devuelve payload.
+- `serializeEthernetII(const EthernetFrame&) -> vector<uint8_t>`: concatena 6+6+2 + payload y aplica padding hasta 46 bytes de payload cuando sea necesario (no añade FCS/CRC).
+- `describeEthernetII(const EthernetFrame&) -> string`: resumen legible para logs/UI.
+- `macToString()` / `parseMac()` : conversión MAC ↔ texto.
+- `toHex()` : volcado hex legible.
+- `parseHexBytesFile(string) -> optional<vector<uint8_t>>`: parsea `custom_packet.hex` (ignora comentarios) a bytes.
 
-**Anatomía del paquete ARP capturado**:
-- **Dst MAC**: `ff:ff:ff:ff:ff:ff` (broadcast, pregunta "a todos")
-- **Src MAC**: Tu MAC del tap0
-- **EtherType**: `0x0806` (ARP)
-- **Payload**: 28 bytes de ARP header + 18 bytes de padding = 46 bytes
+Diseño: separación clara entre representación en memoria (`EthernetFrame`) y wire-format (buffer de bytes). Esto facilita la TUI, logging e inyección (`tap.write`).
 
-### Prueba 3: Tráfico IPv6 Automático (Neighbor Discovery)
-
-```bash
-# No necesitas hacer nada, solo:
-sudo ip link set up dev tap0
-```
-
-**Qué verás automáticamente**:
-```
-[RX] aa:bb:cc:dd:ee:ff -> 33:33:00:00:00:02  proto=IPv6  payload=62 bytes
-[RX] aa:bb:cc:dd:ee:ff -> 33:33:ff:xx:yy:zz  proto=IPv6  payload=78 bytes
-```
-
-**Explicación**:
-- El kernel activa IPv6 por defecto en interfaces nuevas
-- Envía mensajes **ICMPv6 Router Solicitation** (busca routers)
-- Envía **Neighbor Discovery** (equivalente a ARP para IPv6)
-- **Dst MAC** empieza con `33:33:` (multicast IPv6)
-
-**Para desactivar este ruido**:
-```bash
-sudo sysctl -w net.ipv6.conf.tap0.disable_ipv6=1
-```
-
-### Prueba 4: Conexión TCP (Curl/Netcat)
-
-```bash
-# Intenta conectar a un servidor web por tap0
-curl --interface tap0 http://192.168.100.1
-```
-
-**Qué verás**:
-```
-[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
-[RX] aa:bb:cc:dd:ee:ff -> [gateway_mac]      proto=IPv4  payload=74 bytes  # SYN packet
-[RX] aa:bb:cc:dd:ee:ff -> [gateway_mac]      proto=IPv4  payload=66 bytes  # ACK packet
-```
-
-Verás:
-1. **ARP request** para resolver la MAC del gateway
-2. **TCP SYN** (intento de abrir conexión HTTP)
-3. Posibles **retransmisiones** si nadie responde
-
-### Prueba 5: Inyección TX + Captura RX (Loop)
-
-```bash
-# En la app TUI:
-# 1. Presiona [s] para enviar demo TX
-# 2. Mira el log: aparece [TX] en rojo
-# 3. El kernel recibe el paquete y lo procesa
-# 4. Si el kernel responde (ej: ICMP unreachable), verás [RX] en verde
-```
-
-**Flujo completo**:
-```
-[TX] ff:ff:ff:ff:ff:ff -> 02:00:00:00:00:01  proto=Demo  payload=46 bytes  (tu app envía)
-[RX] (posible respuesta del kernel si procesa el paquete)
-```
-
-### Anatomía Completa de una Trama Ethernet Capturada
-
-Cuando capturas un paquete con `[x]` y lo abres con `[e]`, ves esto:
-
-```hex
-# custom_packet.hex (ejemplo real de ARP request)
-
-# Cabecera Ethernet (14 bytes obligatorios)
-ff ff ff ff ff ff    # [0-5]   Dst MAC: broadcast
-aa bb cc dd ee ff    # [6-11]  Src MAC: tu interfaz
-08 06                # [12-13] EtherType: 0x0806 (ARP)
-
-# Payload ARP (28 bytes reales)
-00 01                # Hardware type: Ethernet (1)
-08 00                # Protocol type: IPv4 (0x0800)
-06                   # HW address length: 6 (MAC)
-04                   # Protocol address length: 4 (IPv4)
-00 01                # Opcode: 1 (request)
-aa bb cc dd ee ff    # Sender MAC
-c0 a8 64 32          # Sender IP: 192.168.100.50
-00 00 00 00 00 00    # Target MAC: desconocida (00:00:00:00:00:00)
-c0 a8 64 01          # Target IP: 192.168.100.1
-
-# Padding (18 bytes de relleno para llegar a 46)
-00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00
-```
-
-**Total**: 14 (cabecera) + 28 (ARP) + 18 (padding) = **60 bytes** (mínimo Ethernet)
-
-### ¿Por Qué el Padding Automático?
-
-El código en `serializeEthernetII()` hace:
-
+Ejemplo de uso mínimo
 ```cpp
-if (frame.payload.size() < 46) {
-    buffer.resize(14 + 46);  // Rellena con ceros hasta 46 bytes de payload
+auto opt = parseEthernetII(buf, n);
+if (opt) {
+  EthernetFrame f = *opt;
+  auto summary = describeEthernetII(f);
+  auto bytes = serializeEthernetII(f);
+  tap.write(bytes.data(), bytes.size());
 }
 ```
 
-**Razón**: El estándar IEEE 802.3 exige un **tamaño mínimo de trama de 64 bytes** (incluyendo 4 bytes de FCS/CRC que el hardware añade). Como tu programa no maneja el CRC (lo hace el driver), debe enviar mínimo 60 bytes (14 cabecera + 46 payload).
+Notas importantes
+- Padding: `serializeEthernetII()` asegura al menos 46 bytes de payload (14+46 = 60 bytes visibles). El FCS/CRC (4 bytes) lo añade el driver.
+- `parseEthernetII()` no verifica CRC ni reconstruye FCS; confía en que el driver entregó una trama completa.
 
-### Herramientas Adicionales para Testing
+## C. Flujo de datos y terminología (TX/RX)
 
+Perspectiva del programa (clave para evitar confusión):
+- TX (programa) = `tap.write()` → Programa escribe, kernel recibe (desde la perspectiva del kernel es RX).
+- RX (programa) = `tap.read()` → Programa lee, kernel envía (desde la perspectiva del kernel es TX).
+
+Tabla rápida
+| API | Programa | Kernel |
+|---:|:--------:|:------:|
+| `write()` | TX (envía) | recibe |
+| `read()`  | RX (recibe) | envía |
+
+Implicación práctica: guardar con `[x]` captura lo que el kernel generó; reenviar con `[c]` inyecta de nuevo tráfico "entrante" al kernel.
+
+## D. Interfaz TUI (ncurses) — estructura resumida
+
+Layout adaptativo
+- Header compacto (estado, interfaz).
+- Panel log central con wrapping y scrollbar.
+- Paneles laterales condicionales:
+  - Último TX (izquierda, ancho >=150 cols): MACs, EtherType, hex dump y ASCII.
+  - Último RX (derecha, ancho >=100 cols): igual que TX pero para capturas.
+- Panel compacto de desglose (mostrar 5 líneas) cuando la altura >=30.
+
+Colores y semántica
+- `[RX]` verde, `[TX]` rojo, `[INFO]` cian, `[WARN]` amarillo.
+- Proto/fields resaltados (ej. `proto=` en cian).
+
+Controles principales
+- `s` demo TX 0x00; `d` demo TX 0xFF; `t` demo RX simulado; `c` enviar custom; `x` guardar último RX como custom.
+- `e` editar `custom_packet.hex` (suspende ncurses, reanuda y recarga).
+- Navegación: flechas, PgUp/PgDn y scrollbar.
+
+Comportamiento de inyección
+- El flujo de inyección es: parsear/leer/editar -> `serializeEthernetII()` -> `tap.write()` -> driver añade FCS y procesa la trama.
+
+## E. Pruebas y comandos útiles
+
+Creación/activar TAP
 ```bash
-# 1. Tcpdump (para comparar con tu app)
-sudo tcpdump -i tap0 -e -xx
-
-# 2. Hping3 (enviar paquetes custom desde fuera)
-sudo hping3 -I tap0 --rawip --data 100 192.168.100.1
-
-# 3. Scapy (Python interactivo)
-sudo scapy
->>> sendp(Ether(dst="ff:ff:ff:ff:ff:ff")/IP()/ICMP(), iface="tap0")
+sudo ip tuntap add dev tap0 mode tap
+sudo ip link set up dev tap0
+sudo ip addr add 192.168.100.50/24 dev tap0   # opcional
+sudo ip route add 192.168.100.0/24 dev tap0   # opcional
 ```
 
-### Casos de Uso Avanzados
+Ejemplos de test
+- Ping (desde otra terminal): `ping -I tap0 192.168.100.1` — verás ARP y luego ICMP.
+- ARP probing: `sudo arping -I tap0 -c 3 192.168.100.200`.
+- Curl por interfaz: `curl --interface tap0 http://192.168.100.1`.
 
-1. **Fuzzing de protocolos**: Modifica el payload hex para enviar tramas malformadas y ver cómo reacciona el kernel.
-2. **ARP Spoofing simulado**: Captura un ARP reply, edita la MAC origen, reenvía con `[c]`.
-3. **Monitor de broadcast**: Deja la app corriendo y observa qué servicios del sistema usan broadcast (DHCP, NetBIOS, etc).
-4. **Testing de firewall**: Configura `iptables` en tap0 y verifica qué paquetes bloquea observando el log RX.
+Herramientas de comparación
+- `sudo tcpdump -i tap0 -e -xx`
+- `sudo hping3 -I tap0 --rawip --data 100 192.168.100.1`
+- `scapy` sendp(Ether(...), iface="tap0")
 
-### Notas Importantes
+Ejemplo de trama en `custom_packet.hex` (ARP request)
+```hex
+ff ff ff ff ff ff  aa bb cc dd ee ff  08 06
+00 01 08 00 06 04 00 01 aa bb cc dd ee ff c0 a8 64 32 00 00 00 00 00 00 c0 a8 64 01
+...padding hasta 46 bytes de payload...
+```
 
-- **Sin respuestas**: Como la app captura pero no responde automáticamente, verás muchos "timeouts" en ping/curl. Esto es normal.
-- **Broadcast inicial**: Al activar tap0, verás 2-3 paquetes IPv6 automáticos. Es el kernel anunciándose en la red.
-- **Performance**: En modo no bloqueante con poll, la app consulta el TAP cada 100ms. Si necesitas capturar tráfico de alta velocidad, ajusta el timeout en `poll()`.
+## F. Casos de uso avanzados y notas
+
+- Fuzzing: editar payloads malformados y observar reacciones del stack.
+- ARP spoofing simulado: capturar (`x`), editar (`e`), reinyectar (`c`).
+- Monitor broadcast: útil para DHCP/ND discovery.
+- Firewall testing: combinar con `iptables` sobre `tap0`.
+
+Rendimiento
+- En modo no bloqueante la app muestrea el TAP periódicamente (p. ej. cada 100 ms). Ajustar si necesitas altas tasas.
+
+## G. Ethernet II — estructura y aclaraciones técnicas
+
+- Cabecera fija: 6 dst | 6 src | 2 etherType (14 bytes total).
+- Payload: 46–1500 bytes (sin campo explícito de longitud en Ethernet II).
+- El driver/hardware gestiona CRC/FCS (4 bytes) — la app nunca lo ve.
+
+Discriminador EtherType vs Length
+- Si bytes 12-13 >= 0x0600 → EtherType (tipo de protocolo).
+- Si bytes 12-13 <= 1500 → campo length (modelo IEEE 802.3).
+
+Por qué funciona editar solo el payload
+- `parseHexBytesFile()` mapea directamente bytes[0..13] → cabecera y el resto a `payload`.
+- `serializeEthernetII()` añade padding si `payload.size() < 46`.
 
 ---
 
-## 6. Estructura Interna de Ethernet II (Sin "Magic Headers")
+Si quieres, aplico estos cambios también al `Readme.md` o genero una versión en inglés.
 
-### Mito: "Ethernet tiene un campo de longitud antes del payload"
-
-**Falso para Ethernet II** (el que usamos). Confusión común con IEEE 802.3 (Ethernet original).
-
-### Realidad: Solo 14 bytes de cabecera fija
-
-```
-┌─────────────────────────────────────────────┐
-│  Dst MAC (6) │ Src MAC (6) │ EtherType (2)  │  ← Cabecera (14 bytes)
-├─────────────────────────────────────────────┤
-│          Payload (46-1500 bytes)            │  ← Datos útiles
-│              (sin longitud explícita)       │
-└─────────────────────────────────────────────┘
-```
-
-**¿Cómo sabe el receptor cuántos bytes tiene el payload?**
-
-1. **El hardware de red** cuenta los bytes físicos recibidos antes de EOF (End of Frame)
-2. **El driver del kernel** pasa el tamaño total a `tap.read()`
-3. **Tu código** resta 14: `payloadSize = bytesLeidos - 14`
-
-### Comparación: Ethernet II vs IEEE 802.3
- _____________________________________________________________________
-| Aspecto          | Ethernet II (usado aquí) | IEEE 802.3 (antiguo) |
-|------------------|--------------------------|----------------------|
-| Campo byte 12-13 | EtherType (tipo)         | Length (longitud)    |
-| Identificador    | ≥ 0x0600                 | ≤ 1500               |
-| Uso moderno      | **Estándar actual**      | Raro (Token Ring)    |
-
-**Discriminador**: Si el campo vale ≥ 1536 (0x0600), es EtherType. Si vale ≤ 1500, es longitud.
-
-### ¿Por qué funciona editar solo el payload?
-
-```cpp
-// parseHexBytesFile() convierte TODO el archivo hex a bytes
-std::vector<uint8_t> rawBytes = {0xff, 0xff, ..., 0x00, 0x00}; // N bytes
-
-// parseEthernetII() divide:
-EthernetFrame frame;
-frame.dst   = rawBytes[0..5];     // Primeros 6
-frame.src   = rawBytes[6..11];    // Segundos 6
-frame.type  = rawBytes[12..13];   // Siguientes 2
-frame.payload.assign(rawBytes.begin() + 14, rawBytes.end()); // TODO el resto
-```
-
-**No hay validación de longitud** porque:
-- El estándar confía en que el tamaño físico es correcto
-- El padding lo añade `serializeEthernetII()` automáticamente si falta
-- Ethernet asume que si llegó al receptor, el tamaño era válido (CRC correcto)
-
-### Ejemplo práctico: Añadir 10 bytes al payload
-
-```hex
-# custom_packet.hex ANTES (60 bytes totales)
-ff ff ff ff ff ff aa bb cc dd ee ff 88 b5
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00
-
-# custom_packet.hex DESPUÉS (70 bytes totales)
-ff ff ff ff ff ff aa bb cc dd ee ff 88 b5
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00
-AA BB CC DD EE FF 11 22 33 44   # 10 bytes nuevos
-```
-
-**Resultado automático**:
-- `frame.payload.size()` pasa de 46 a 56
-- `describeEthernetII()` muestra "payload=56 bytes"
-- **No necesitas tocar ningún "campo de longitud"** porque no existe
-
-### ¿Y el CRC/FCS (Frame Check Sequence)?
-
-**No lo manejas tú**. Los últimos 4 bytes de una trama Ethernet física son el CRC:
-- Lo **añade automáticamente** el hardware de red al transmitir
-- Lo **verifica y elimina** el hardware al recibir
-- Tu programa **nunca ve esos 4 bytes** - el driver ya los procesó
-
-Por eso el código trabaja con tramas de "60 bytes mínimo" en lugar de 64: los 4 del CRC son invisibles para la aplicación.
