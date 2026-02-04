@@ -413,124 +413,68 @@ void drawLastRxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastRxFram
     wrefresh(win);
 }
 
-void drawFrameBreakdown(WINDOW* win, const std::optional<EthernetFrame>& lastFrame, bool isTx) {
+// drawFrameBreakdown removed - unused function
+
+void drawProtocolDiagram(WINDOW* win, int startY, int startX, int maxWidth, int activeColor) {
+    if (maxWidth <= 0) return;
+    auto drawLine = [&](int y, const std::string& text, int colorPair) {
+        if (colorPair > 0) wattron(win, COLOR_PAIR(colorPair));
+        mvwaddnstr(win, y, startX, text.c_str(), maxWidth);
+        if (colorPair > 0) wattroff(win, COLOR_PAIR(colorPair));
+    };
+
+    const int baseColor = 5;
+    const int lineColor = (activeColor > 0) ? activeColor : baseColor;
+
+    drawLine(startY,     "Ethernet: [Dst MAC][Src MAC][Type][Payload]", lineColor);
+    drawLine(startY + 1, "  IP:     [Ver][IHL][TOS][Len][ID][Flg][TTL][Proto][Cks][Src IP][Dst IP][Data]", lineColor);
+    drawLine(startY + 2, "    TCP:  [SrcPort][DstPort][Seq][Ack][Flags][Win][Cks][Urg][Data]", lineColor);
+}
+
+void drawInfo(WINDOW* win, int infoPage, int tick, int lastTxTick, int lastRxTick) {
     werase(win);
     box(win, 0, 0);
-    const char* title = isTx ? " Desglose Trama TX " : " Desglose Trama RX ";
-    int titleColor = isTx ? 2 : 1;
-    wattron(win, COLOR_PAIR(titleColor));
-    mvwprintw(win, 0, 2, "%s", title);
-    wattroff(win, COLOR_PAIR(titleColor));
-    
-    if (!lastFrame) {
-        wattron(win, COLOR_PAIR(4));
-        mvwprintw(win, 1, 2, "[ Sin paquete ]");
-        wattroff(win, COLOR_PAIR(4));
-        wrefresh(win);
-        return;
-    }
-    
-    // Serializar la trama completa
-    auto frameBytes = serializeEthernetII(*lastFrame);
-    int y = 1;
     int h, w;
     getmaxyx(win, h, w);
     
-    // Línea compacta de MAC Destino
-    std::string line = "Dst: ";
-    wattron(win, COLOR_PAIR(4));
-    for (int i = 0; i < 6 && i < (int)frameBytes.size(); ++i) {
-        char buf[4];
-        snprintf(buf, sizeof(buf), "%02X ", frameBytes[i]);
-        line += buf;
-    }
-    wattroff(win, COLOR_PAIR(4));
-    if (line.size() + 20 < (size_t)w) {
-        line += " | ";
-        line += macToString(lastFrame->dst);
-    }
-    mvwprintw(win, y++, 2, "%s", line.c_str());
-    
-    // Línea compacta de MAC Origen
-    line = "Src: ";
-    wattron(win, COLOR_PAIR(3));
-    for (int i = 6; i < 12 && i < (int)frameBytes.size(); ++i) {
-        char buf[4];
-        snprintf(buf, sizeof(buf), "%02X ", frameBytes[i]);
-        line += buf;
-    }
-    wattroff(win, COLOR_PAIR(3));
-    if (line.size() + 20 < (size_t)w) {
-        line += " | ";
-        line += macToString(lastFrame->src);
-    }
-    mvwprintw(win, y++, 2, "%s", line.c_str());
-    
-    // Línea de EtherType
-    line = "Type: ";
-    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
-    wattron(win, COLOR_PAIR(5));
-    if (12 < (int)frameBytes.size() && 13 < (int)frameBytes.size()) {
-        char buf[20];
-        snprintf(buf, sizeof(buf), "%02X %02X", frameBytes[12], frameBytes[13]);
-        line += buf;
-    }
-    wattroff(win, COLOR_PAIR(5));
-    line += " | ";
-    char etBuf[40];
-    snprintf(etBuf, sizeof(etBuf), "0x%04X (%s)", lastFrame->etherType, etherTypeLabel(lastFrame->etherType).c_str());
-    line += etBuf;
-    mvwprintw(win, y++, 2, "%s", line.c_str());
-    
-    // Línea de Payload
-    line = "Payload: ";
-    wattron(win, COLOR_PAIR(1));
-    int bytesShown = 0;
-    for (std::size_t i = 0; i < lastFrame->payload.size() && bytesShown < 16; ++i, ++bytesShown) {
-        char buf[4];
-        snprintf(buf, sizeof(buf), "%02X ", lastFrame->payload[i]);
-        line += buf;
-    }
-    wattroff(win, COLOR_PAIR(1));
-    if (lastFrame->payload.size() > 16) {
-        line += "...";
-    }
-    mvwprintw(win, y++, 2, "%s", line.c_str());
-    
-    // Línea de resumen
-    if (y < h - 1) {
-        char sumBuf[80];
-        snprintf(sumBuf, sizeof(sumBuf), "Total: %zu bytes (14 header + %zu payload)", frameBytes.size(), lastFrame->payload.size());
-        mvwprintw(win, y++, 2, "%s", sumBuf);
-    }
-    
-    wrefresh(win);
-}
-
-void drawInfo(WINDOW* win, int infoPage = 0) {
-    werase(win);
-    box(win, 0, 0);
-    
     if (infoPage == 0) {
-        mvwprintw(win, 1, 2, "Info - Conceptos Basicos: RX vs TX (1/3)");
-        mvwprintw(win, 3, 2, "*** IMPORTANTE: Direccionalidad desde perspectiva del PROGRAMA ***");
-        mvwprintw(win, 5, 2, "TX (rojo): Paquetes que tu programa ESCRIBE al kernel (tap.write)");
-        mvwprintw(win, 6, 2, "  -> El kernel los RECIBE como si vinieran de la red fisica.");
-        mvwprintw(win, 7, 2, "  -> Uso: Inyectar trafico simulado (ej: ARP reply falso, ICMP).");
-        mvwprintw(win, 9, 2, "RX (verde): Paquetes que el kernel ENVIA a la red (tap.read captura)");
-        mvwprintw(win, 10, 2, "  -> Tu programa los LEE como sniffing del trafico saliente.");
-        mvwprintw(win, 11, 2, "  -> Uso: Capturar trafico generado por el SO (ej: ping, curl).");
-        mvwprintw(win, 13, 2, "TAP: Interfaz virtual que simula un cable Ethernet de capa 2.");
-        mvwprintw(win, 14, 2, "Trama Ethernet: MAC dst (6B) + MAC src (6B) + EtherType (2B) + Payload");
-        // mvwprintw(win, 16, 2, "EtherType: 0x0800=IPv4, 0x0806=ARP, 0x86DD=IPv6, 0x88B5=Demo.");
+        mvwprintw(win, 1, 2, "Info - Protocolo Ethernet y Conceptos Basicos (1/3)");
         
-        mvwprintw(win, 16, 2, "Ejemplos de prueba (Terminal):");
-        wattron(win, COLOR_PAIR(4));
-        mvwprintw(win, 17, 2, "  ping -I tap_user 8.8.8.8   (Genera RX)");
-        mvwprintw(win, 18, 2, "  tcpdump -i tap_user -n     (Verifica TX/RX)");
-        wattroff(win, COLOR_PAIR(4));
+        wattron(win, COLOR_PAIR(6));
+        mvwprintw(win, 3, 2, "=== PROTOCOLO ETHERNET (Capa 2 - Enlace de Datos) ===");
+        wattroff(win, COLOR_PAIR(6));
+        
+        mvwprintw(win, 5, 2, "1. MAC Destino (6 bytes): Direccion fisica del dispositivo receptor");
+        mvwprintw(win, 6, 2, "   - ff:ff:ff:ff:ff:ff = Broadcast (todos en la red local)");
+        mvwprintw(win, 7, 2, "   - Identifica quien recibe la trama en el mismo segmento");
+        
+        mvwprintw(win, 9, 2, "2. MAC Origen (6 bytes): Direccion fisica del dispositivo emisor");
+        mvwprintw(win, 10, 2, "   - Identifica quien envia la trama para respuestas");
+        
+        mvwprintw(win, 12, 2, "3. EtherType (2 bytes): Protocolo de capa superior encapsulado");
+        mvwprintw(win, 13, 2, "   - 0x0800=IPv4, 0x0806=ARP, 0x86DD=IPv6, 0x88B5=Demo");
+        
+        mvwprintw(win, 15, 2, "4. Payload (46-1500 bytes): Datos del protocolo superior");
+        mvwprintw(win, 16, 2, "   - Contiene paquete IP, ARP, u otros datos");
+        
+        wattron(win, COLOR_PAIR(3));
+        mvwprintw(win, 18, 2, "TX(rojo): Tu programa -> Kernel | RX(verde): Kernel -> Tu programa");
+        wattroff(win, COLOR_PAIR(3));
 
-        mvwprintw(win, 20, 2, "Controles: [i] Info  [-] Pagina anterior  [+] Siguiente  [q] Salir");
+        const int controlsY = h - 2;
+        mvwprintw(win, controlsY, 2, "Controles: [i] Info  [-] Pagina anterior  [+] Siguiente");
+
+        const bool txActive = (tick - lastTxTick) < 40;
+        const bool rxActive = (tick - lastRxTick) < 40;
+        int activeColor = 0;
+        if (txActive && !rxActive) activeColor = 2;
+        else if (rxActive && !txActive) activeColor = 1;
+        else if (txActive && rxActive) activeColor = ((tick / 6) % 2 == 0) ? 2 : 1;
+
+        const int diagramY = controlsY - 4;
+        if (diagramY > 12) {
+            drawProtocolDiagram(win, diagramY, 2, w - 4, activeColor);
+        }
     } else if (infoPage == 1) {
         mvwprintw(win, 1, 2, "Info - Editar Paquetes Custom (2/3)");
         mvwprintw(win, 3, 2, "Archivo: custom_packet.hex (editar con [e])");
@@ -542,9 +486,33 @@ void drawInfo(WINDOW* win, int infoPage = 0) {
         mvwprintw(win, 10, 2, "  88 b5                (EtherType: Demo)");
         mvwprintw(win, 11, 2, "  42 00 00... (46 bytes payload minimo)");
         mvwprintw(win, 13, 2, "Ejemplo: MAC 52:54:00:12:34:56 = 52 54 00 12 34 56");
-        mvwprintw(win, 14, 2, "Controles: [i] Info  [-] Anterior  [+] Siguiente  [q] Salir");
+        mvwprintw(win, h - 2, 2, "Controles: [i] Info  [-] Anterior  [+] Siguiente  [q] Salir");
     } else if (infoPage == 2) {
-        mvwprintw(win, 1, 2, "Info - Valores de Bits y Ejemplos (3/3)");
+        mvwprintw(win, 1, 2, "Info - Protocolo IP y TCP (3/4)");
+        
+        wattron(win, COLOR_PAIR(6));
+        mvwprintw(win, 3, 2, "=== PROTOCOLO IP (Capa 3 - Red) ===");
+        wattroff(win, COLOR_PAIR(6));
+        
+        mvwprintw(win, 4, 2, "Ver: Version IP (4=IPv4, 6=IPv6) | IHL: Longitud cabecera");
+        mvwprintw(win, 5, 2, "TOS: Tipo de servicio | Len: Longitud total del paquete");
+        mvwprintw(win, 6, 2, "ID: Identificador fragmentacion | Flg: Flags fragmentacion");
+        mvwprintw(win, 7, 2, "TTL: Time To Live (saltos maximos) | Proto: Protocolo superior");
+        mvwprintw(win, 8, 2, "Cks: Checksum | Src IP/Dst IP: IPs origen y destino");
+        
+        wattron(win, COLOR_PAIR(6));
+        mvwprintw(win, 10, 2, "=== PROTOCOLO TCP (Capa 4 - Transporte) ===");
+        wattroff(win, COLOR_PAIR(6));
+        
+        mvwprintw(win, 11, 2, "SrcPort/DstPort: Puertos origen y destino (ej: 80=HTTP)");
+        mvwprintw(win, 12, 2, "Seq: Numero de secuencia | Ack: Numero de reconocimiento");
+        mvwprintw(win, 13, 2, "Flags: SYN,ACK,FIN,RST... (control de conexion)");
+        mvwprintw(win, 14, 2, "Win: Ventana (control de flujo) | Cks: Checksum");
+        mvwprintw(win, 15, 2, "Urg: Puntero urgente | Data: Datos de aplicacion");
+        
+        mvwprintw(win, h - 2, 2, "Controles: [i] Info  [-] Anterior  [+] Siguiente");
+    } else if (infoPage == 3) {
+        mvwprintw(win, 1, 2, "Info - Valores y Ejemplos (4/4)");
         mvwprintw(win, 3, 2, "MAC Address (48 bits = 6 bytes):");
         mvwprintw(win, 4, 2, "  ff:ff:ff:ff:ff:ff = Broadcast (todos los dispositivos)");
         mvwprintw(win, 5, 2, "  00:11:22:33:44:55 = Unicast (dispositivo especifico)");
@@ -553,7 +521,7 @@ void drawInfo(WINDOW* win, int infoPage = 0) {
         mvwprintw(win, 10, 2, "Payload (variable, minimo 46 bytes):");
         mvwprintw(win, 11, 2, "  Bytes arbitrarios (data util del protocolo)");
         mvwprintw(win, 12, 2, "  42 = 'B' en ASCII, util para patrones visibles");
-        mvwprintw(win, 14, 2, "Controles: [i] Info  [-] Anterior  [+] Siguiente  [q] Salir");
+        mvwprintw(win, h - 2, 2, "Controles: [i] Info  [-] Anterior  [+] Siguiente");
     }
     wrefresh(win);
 }
@@ -645,10 +613,14 @@ int runTuiApp(TapDevice& tap) {
     std::optional<EthernetFrame> lastRxFrame;
     std::optional<EthernetFrame> lastTxFrame;
     bool showSendMenu = false;
+    int tick = 0;
+    int lastTxTick = -100000;
+    int lastRxTick = -100000;
     while (running) {
+        ++tick;
         if (showInfo) {
             // Fullscreen info to avoid flicker from other panels
-            drawInfo(stdscr, infoPage);
+            drawInfo(stdscr, infoPage, tick, lastTxTick, lastRxTick);
         } else {
             drawHeader(headerWin, tap.name(), status);
             drawLog(logWin, log, scrollOffset);
@@ -678,17 +650,14 @@ int runTuiApp(TapDevice& tap) {
 
         int ch = getch();
         if (ch != ERR) {
-            if (ch == 'q' || ch == 'Q') {
-                status = "Saliendo...";
-                running = false;
-            } else if (ch == 'i' || ch == 'I') {
+            if (ch == 'i' || ch == 'I') {
                 showInfo = !showInfo;
                 if (showInfo) showSendMenu = false;
                 infoPage = 0;
             } else if (ch == '-' && showInfo) {
-                infoPage = (infoPage - 1 + 3) % 3;
+                infoPage = (infoPage - 1 + 4) % 4;
             } else if (ch == '+' && showInfo) {
-                infoPage = (infoPage + 1) % 3;
+                infoPage = (infoPage + 1) % 4;
             } else if (ch == 'm' || ch == 'M') {
                 if (!showInfo) {
                     showSendMenu = !showSendMenu;
@@ -700,6 +669,7 @@ int runTuiApp(TapDevice& tap) {
                 int sent = tap.write(bytes.data(), bytes.size());
                 status = txResult(sent);
                 log.push("[TX] Demo 0x00 (" + std::to_string(bytes.size()) + "B) -> " + status);
+                lastTxTick = tick;
                 showSendMenu = false;
             } else if ((ch == 'd' || ch == 'D') && showSendMenu) {
                 auto frame = makeDefaultDemoFrame(1);
@@ -708,6 +678,7 @@ int runTuiApp(TapDevice& tap) {
                 int sent = tap.write(bytes.data(), bytes.size());
                 status = txResult(sent);
                 log.push("[TX] Demo 0xFF (" + std::to_string(bytes.size()) + "B) -> " + status);
+                lastTxTick = tick;
                 showSendMenu = false;
             } else if (ch == 'e' || ch == 'E') {
                 endwin();
@@ -757,7 +728,10 @@ int runTuiApp(TapDevice& tap) {
                     status = txResult(sent);
                     log.push("[TX] Custom -> " + status);
                 }
+                lastTxTick = tick;
                 showSendMenu = false;
+            } else if ((ch == 's' || ch == 'S' || ch == 'd' || ch == 'D' || ch == 'c' || ch == 'C') && !showSendMenu) {
+                status = "Abre el menu con [m] para enviar";
             } else if (ch == 'x' || ch == 'X') {
                 if (!lastRxFrame) {
                     log.push("[WARN] [RX] No hay paquete RX capturado para guardar");
@@ -783,6 +757,7 @@ int runTuiApp(TapDevice& tap) {
                 const std::string typeLabel = etherTypeLabel(demoFrame.etherType);
                 log.push("[RX] Demo simulado: " + describeEthernetII(demoFrame) + " proto=" + typeLabel);
                 status = "RX Demo simulado (como si fuera del kernel)";
+                lastRxTick = tick;
             } else if (ch == KEY_UP) {
                 scrollOffset += 1; // Scroll up (back in history)
             } else if (ch == KEY_DOWN) {
@@ -802,8 +777,10 @@ int runTuiApp(TapDevice& tap) {
                     lastRxFrame = frameOpt;
                     const std::string typeLabel = etherTypeLabel(frameOpt->etherType);
                     log.push("[RX] " + describeEthernetII(*frameOpt) + " proto=" + typeLabel);
+                    lastRxTick = tick;
                 } else {
                     log.push("[RX] " + std::to_string(n) + " bytes (raw)");
+                    lastRxTick = tick;
                 }
             } else if (n < 0 && errno != EAGAIN) {
                 log.push("[RX] Error leyendo TAP");
