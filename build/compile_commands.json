@@ -1,0 +1,38 @@
+[
+{
+  "directory": "/home/t480s/Documentos/netGui-Tool/build",
+  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -I/usr/include -o CMakeFiles/netGui.dir/src/ethernet.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/ethernet.cpp",
+  "file": "/home/t480s/Documentos/netGui-Tool/src/ethernet.cpp",
+  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/ethernet.cpp.o"
+},
+{
+  "directory": "/home/t480s/Documentos/netGui-Tool/build",
+  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -I/usr/include -o CMakeFiles/netGui.dir/src/main.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/main.cpp",
+  "file": "/home/t480s/Documentos/netGui-Tool/src/main.cpp",
+  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/t480s/Documentos/netGui-Tool/build",
+  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -I/usr/include -o CMakeFiles/netGui.dir/src/netgui_actions.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/netgui_actions.cpp",
+  "file": "/home/t480s/Documentos/netGui-Tool/src/netgui_actions.cpp",
+  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/netgui_actions.cpp.o"
+},
+{
+  "directory": "/home/t480s/Documentos/netGui-Tool/build",
+  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -I/usr/include -o CMakeFiles/netGui.dir/src/netgui_gui.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/netgui_gui.cpp",
+  "file": "/home/t480s/Documentos/netGui-Tool/src/netgui_gui.cpp",
+  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/netgui_gui.cpp.o"
+},
+{
+  "directory": "/home/t480s/Documentos/netGui-Tool/build",
+  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -I/usr/include -o CMakeFiles/netGui.dir/src/rgl_layout.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/rgl_layout.cpp",
+  "file": "/home/t480s/Documentos/netGui-Tool/src/rgl_layout.cpp",
+  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/rgl_layout.cpp.o"
+},
+{
+  "directory": "/home/t480s/Documentos/netGui-Tool/build",
+  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -I/usr/include -o CMakeFiles/netGui.dir/src/tap.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/tap.cpp",
+  "file": "/home/t480s/Documentos/netGui-Tool/src/tap.cpp",
+  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/tap.cpp.o"
+}
+]

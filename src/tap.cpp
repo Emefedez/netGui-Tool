@@ -29,6 +29,7 @@ TapDevice::TapDevice(const std::string& name) : dev_name(name) {
     // IFF_NO_PI: No Packet Information (sin cabecera extra)
     ifr.ifr_flags = IFF_TAP | IFF_NO_PI; 
     std::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+    //c_str() devuelve const char*
 
     // Registrar el dispositivo con el kernel
     if (ioctl(fd, TUNSETIFF, (void*)&ifr) < 0) {
@@ -39,7 +40,7 @@ TapDevice::TapDevice(const std::string& name) : dev_name(name) {
         
     // Guardar el nombre real
     dev_name = ifr.ifr_name;
-    std::cout << "Dispositivo TAP creado: " << dev_name << " (fd: " << fd << ")\n";
+    std::cout << "Created TAP device: " << dev_name << " (fd: " << fd << ")\n";
 }
 
 /**
@@ -47,7 +48,7 @@ TapDevice::TapDevice(const std::string& name) : dev_name(name) {
  */
 TapDevice::~TapDevice() {
     if (fd >= 0) {
-        close(fd);
+        close(fd); //almacena el descritor del archivo
     }
 }
 

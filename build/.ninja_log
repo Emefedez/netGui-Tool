@@ -1,0 +1,8 @@
+# ninja log v7
+3	917	1770188051468645608	CMakeFiles/netGui.dir/src/main.cpp.o	b9dad3903290c134
+10	1105	1770188051475645633	CMakeFiles/netGui.dir/src/tap.cpp.o	51bd48cbe5c1215e
+2	1938	1770188051467645604	CMakeFiles/netGui.dir/src/ethernet.cpp.o	b1bc4cf9a0ced00b
+3	2255	1770188051469702773	CMakeFiles/netGui.dir/src/netgui_actions.cpp.o	9835ba83bf4734de
+9	2715	1770188051474645629	CMakeFiles/netGui.dir/src/rgl_layout.cpp.o	ba43c58f9efa2595
+3	3588	1770188051470056426	CMakeFiles/netGui.dir/src/netgui_gui.cpp.o	7548b06b0b795636
+3588	3781	1770188055053658838	netGui	55a0953b663955dd

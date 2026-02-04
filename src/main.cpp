@@ -9,8 +9,7 @@
  *
  * Keeps the entry small: TAP init + delegate to GUI loop.
  */
-int main()
-{
+int main() {
     try
     {
         TapDevice tap("tap0");

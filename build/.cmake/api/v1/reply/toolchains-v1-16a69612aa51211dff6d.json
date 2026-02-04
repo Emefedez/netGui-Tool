@@ -10,17 +10,15 @@
 				{
 					"includeDirectories" : 
 					[
-						"/usr/lib/gcc/aarch64-linux-gnu/13/include",
+						"/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include",
 						"/usr/local/include",
-						"/usr/include/aarch64-linux-gnu",
+						"/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include-fixed",
 						"/usr/include"
 					],
 					"linkDirectories" : 
 					[
-						"/usr/lib/gcc/aarch64-linux-gnu/13",
-						"/usr/lib/aarch64-linux-gnu",
+						"/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1",
 						"/usr/lib",
-						"/lib/aarch64-linux-gnu",
 						"/lib"
 					],
 					"linkFrameworkDirectories" : [],
@@ -33,8 +31,8 @@
 						"gcc_s"
 					]
 				},
-				"path" : "/usr/bin/aarch64-linux-gnu-gcc",
-				"version" : "13.3.0"
+				"path" : "/usr/bin/gcc",
+				"version" : "15.2.1"
 			},
 			"language" : "C",
 			"sourceFileExtensions" : 
@@ -51,20 +49,18 @@
 				{
 					"includeDirectories" : 
 					[
-						"/usr/include/c++/13",
-						"/usr/include/aarch64-linux-gnu/c++/13",
-						"/usr/include/c++/13/backward",
-						"/usr/lib/gcc/aarch64-linux-gnu/13/include",
+						"/usr/include/c++/15.2.1",
+						"/usr/include/c++/15.2.1/x86_64-pc-linux-gnu",
+						"/usr/include/c++/15.2.1/backward",
+						"/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include",
 						"/usr/local/include",
-						"/usr/include/aarch64-linux-gnu",
+						"/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include-fixed",
 						"/usr/include"
 					],
 					"linkDirectories" : 
 					[
-						"/usr/lib/gcc/aarch64-linux-gnu/13",
-						"/usr/lib/aarch64-linux-gnu",
+						"/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1",
 						"/usr/lib",
-						"/lib/aarch64-linux-gnu",
 						"/lib"
 					],
 					"linkFrameworkDirectories" : [],
@@ -79,8 +75,8 @@
 						"gcc"
 					]
 				},
-				"path" : "/usr/bin/aarch64-linux-gnu-g++",
-				"version" : "13.3.0"
+				"path" : "/usr/bin/g++",
+				"version" : "15.2.1"
 			},
 			"language" : "CXX",
 			"sourceFileExtensions" : 
