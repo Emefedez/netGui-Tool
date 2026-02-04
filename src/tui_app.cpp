@@ -39,7 +39,7 @@ void drawFooter(WINDOW* win) {
     werase(win);
     box(win, 0, 0);
     mvwprintw(win, 1, 2, "[s] Demo(0x00)  [d] Demo(0xFF)  [t] Demo RX  [c] Enviar custom  [e] Editar custom");
-    mvwprintw(win, 2, 2, "[r] Recargar custom  [x] Guardar RX  [i] Info  [q] Salir  [Up/Down] Scroll");
+    mvwprintw(win, 2, 2, "[r] Recargar  [x] Guardar RX  [b] Toggle TX/RX  [i] Info  [q] Salir  [Up/Down] Scroll");
     wrefresh(win);
 }
 
@@ -143,6 +143,236 @@ std::string etherTypeLabel(std::uint16_t etherType) {
     }
 }
 
+void drawLastTxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastTxFrame) {
+    werase(win);
+    box(win, 0, 0);
+    mvwprintw(win, 0, 2, " Ultimo TX Enviado ");
+    
+    if (!lastTxFrame) {
+        wattron(win, COLOR_PAIR(4));
+        mvwprintw(win, 2, 2, "[ Sin paquetes TX ]");
+        wattroff(win, COLOR_PAIR(4));
+        wrefresh(win);
+        return;
+    }
+    
+    int y = 1;
+    int h, w;
+    getmaxyx(win, h, w);
+    
+    // Información de cabecera
+    wattron(win, COLOR_PAIR(3));
+    mvwprintw(win, y++, 2, "Dst: %s", macToString(lastTxFrame->dst).c_str());
+    mvwprintw(win, y++, 2, "Src: %s", macToString(lastTxFrame->src).c_str());
+    mvwprintw(win, y++, 2, "Tipo: 0x%04X (%s)", lastTxFrame->etherType, etherTypeLabel(lastTxFrame->etherType).c_str());
+    wattroff(win, COLOR_PAIR(3));
+    y++;
+    
+    // Payload en hex + ASCII
+    mvwprintw(win, y++, 2, "Payload (%zu bytes):", lastTxFrame->payload.size());
+    const auto& payload = lastTxFrame->payload;
+    const int bytesPerLine = 16;
+    const int maxLines = h - y - 2; // Espacio disponible
+    
+    for (std::size_t i = 0; i < payload.size() && (y - 6) < maxLines; i += bytesPerLine) {
+        // Offset
+        wattron(win, COLOR_PAIR(4));
+        mvwprintw(win, y, 2, "%04zX", i);
+        wattroff(win, COLOR_PAIR(4));
+        
+        // Hex bytes
+        int x = 7;
+        for (std::size_t j = 0; j < bytesPerLine && (i + j) < payload.size(); ++j) {
+            mvwprintw(win, y, x, "%02X", payload[i + j]);
+            x += 3;
+        }
+        
+        // Parte ASCII
+        x = 7 + bytesPerLine * 3 + 2;
+        if (x + bytesPerLine < w - 2) {
+            wattron(win, COLOR_PAIR(3));
+            for (std::size_t j = 0; j < bytesPerLine && (i + j) < payload.size(); ++j) {
+                std::uint8_t byte = payload[i + j];
+                char ch = (byte >= 32 && byte <= 126) ? static_cast<char>(byte) : '.';
+                mvwaddch(win, y, x + j, ch);
+            }
+            wattroff(win, COLOR_PAIR(3));
+        }
+        
+        y++;
+    }
+    
+    // Indicador si hay más datos
+    if (payload.size() > static_cast<std::size_t>(maxLines * bytesPerLine)) {
+        wattron(win, COLOR_PAIR(4));
+        mvwprintw(win, y, 2, "... (%zu bytes mas)", 
+                 payload.size() - (maxLines * bytesPerLine));
+        wattroff(win, COLOR_PAIR(4));
+    }
+    
+    wrefresh(win);
+}
+
+void drawLastRxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastRxFrame) {
+    werase(win);
+    box(win, 0, 0);
+    mvwprintw(win, 0, 2, " Ultimo RX Capturado ");
+    
+    if (!lastRxFrame) {
+        wattron(win, COLOR_PAIR(4));
+        mvwprintw(win, 2, 2, "[ Sin paquetes RX ]");
+        wattroff(win, COLOR_PAIR(4));
+        wrefresh(win);
+        return;
+    }
+    
+    int y = 1;
+    int h, w;
+    getmaxyx(win, h, w);
+    
+    // Información de cabecera
+    wattron(win, COLOR_PAIR(3));
+    mvwprintw(win, y++, 2, "Dst: %s", macToString(lastRxFrame->dst).c_str());
+    mvwprintw(win, y++, 2, "Src: %s", macToString(lastRxFrame->src).c_str());
+    mvwprintw(win, y++, 2, "Tipo: 0x%04X (%s)", lastRxFrame->etherType, etherTypeLabel(lastRxFrame->etherType).c_str());
+    wattroff(win, COLOR_PAIR(3));
+    y++;
+    
+    // Payload en hex + ASCII
+    mvwprintw(win, y++, 2, "Payload (%zu bytes):", lastRxFrame->payload.size());
+    const auto& payload = lastRxFrame->payload;
+    const int bytesPerLine = 16;
+    const int maxLines = h - y - 2; // Espacio disponible
+    
+    for (std::size_t i = 0; i < payload.size() && (y - 6) < maxLines; i += bytesPerLine) {
+        // Offset
+        wattron(win, COLOR_PAIR(4));
+        mvwprintw(win, y, 2, "%04zX", i);
+        wattroff(win, COLOR_PAIR(4));
+        
+        // Hex bytes
+        int x = 7;
+        for (std::size_t j = 0; j < bytesPerLine && (i + j) < payload.size(); ++j) {
+            mvwprintw(win, y, x, "%02X", payload[i + j]);
+            x += 3;
+        }
+        
+        // Parte ASCII
+        x = 7 + bytesPerLine * 3 + 2;
+        if (x + bytesPerLine < w - 2) {
+            wattron(win, COLOR_PAIR(3));
+            for (std::size_t j = 0; j < bytesPerLine && (i + j) < payload.size(); ++j) {
+                std::uint8_t byte = payload[i + j];
+                char ch = (byte >= 32 && byte <= 126) ? static_cast<char>(byte) : '.';
+                mvwaddch(win, y, x + j, ch);
+            }
+            wattroff(win, COLOR_PAIR(3));
+        }
+        
+        y++;
+    }
+    
+    // Indicador si hay más datos
+    if (payload.size() > static_cast<std::size_t>(maxLines * bytesPerLine)) {
+        wattron(win, COLOR_PAIR(4));
+        mvwprintw(win, y, 2, "... (%zu bytes mas)", 
+                 payload.size() - (maxLines * bytesPerLine));
+        wattroff(win, COLOR_PAIR(4));
+    }
+    
+    wrefresh(win);
+}
+
+void drawFrameBreakdown(WINDOW* win, const std::optional<EthernetFrame>& lastFrame, bool isTx) {
+    werase(win);
+    box(win, 0, 0);
+    const char* title = isTx ? " Desglose Trama TX " : " Desglose Trama RX ";
+    int titleColor = isTx ? 2 : 1;
+    wattron(win, COLOR_PAIR(titleColor));
+    mvwprintw(win, 0, 2, "%s", title);
+    wattroff(win, COLOR_PAIR(titleColor));
+    
+    if (!lastFrame) {
+        wattron(win, COLOR_PAIR(4));
+        mvwprintw(win, 1, 2, "[ Sin paquete ]");
+        wattroff(win, COLOR_PAIR(4));
+        wrefresh(win);
+        return;
+    }
+    
+    // Serializar la trama completa
+    auto frameBytes = serializeEthernetII(*lastFrame);
+    
+    int y = 1;
+    int h, w;
+    getmaxyx(win, h, w);
+    
+    mvwprintw(win, y++, 2, "Trama completa: %zu bytes", frameBytes.size());
+    y++;
+    
+    // Mostrar bytes con colores por sección
+    const int bytesPerLine = 24;
+    std::size_t offset = 0;
+    
+    // Sección 1: MAC Destino (6 bytes) - Amarillo
+    mvwprintw(win, y++, 2, "MAC Destino (6 bytes):");
+    wattron(win, COLOR_PAIR(4));
+    for (int i = 0; i < 6 && offset < frameBytes.size(); ++i, ++offset) {
+        mvwprintw(win, y, 2 + i * 3, "%02X", frameBytes[offset]);
+    }
+    wattroff(win, COLOR_PAIR(4));
+    mvwprintw(win, y++, 21, " = %s", macToString(lastFrame->dst).c_str());
+    y++;
+    
+    // Sección 2: MAC Origen (6 bytes) - Cyan
+    mvwprintw(win, y++, 2, "MAC Origen (6 bytes):");
+    wattron(win, COLOR_PAIR(3));
+    for (int i = 0; i < 6 && offset < frameBytes.size(); ++i, ++offset) {
+        mvwprintw(win, y, 2 + i * 3, "%02X", frameBytes[offset]);
+    }
+    wattroff(win, COLOR_PAIR(3));
+    mvwprintw(win, y++, 21, " = %s", macToString(lastFrame->src).c_str());
+    y++;
+    
+    // Sección 3: EtherType (2 bytes) - Magenta (usaremos COLOR_PAIR(2) en rojo)
+    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+    mvwprintw(win, y++, 2, "EtherType (2 bytes):");
+    wattron(win, COLOR_PAIR(5));
+    for (int i = 0; i < 2 && offset < frameBytes.size(); ++i, ++offset) {
+        mvwprintw(win, y, 2 + i * 3, "%02X", frameBytes[offset]);
+    }
+    wattroff(win, COLOR_PAIR(5));
+    mvwprintw(win, y++, 10, " = 0x%04X (%s)", lastFrame->etherType, etherTypeLabel(lastFrame->etherType).c_str());
+    y++;
+    
+    // Sección 4: Payload (resto) - Verde claro
+    if (y < h - 3) {
+        mvwprintw(win, y++, 2, "Payload (%zu bytes):", lastFrame->payload.size());
+        const int maxPayloadLines = h - y - 2;
+        int lineCount = 0;
+        
+        wattron(win, COLOR_PAIR(1));
+        for (std::size_t i = 0; i < lastFrame->payload.size() && lineCount < maxPayloadLines; ) {
+            int x = 2;
+            for (int j = 0; j < bytesPerLine && i < lastFrame->payload.size() && x < w - 3; ++j, ++i) {
+                mvwprintw(win, y, x, "%02X", lastFrame->payload[i]);
+                x += 3;
+            }
+            y++;
+            lineCount++;
+        }
+        wattroff(win, COLOR_PAIR(1));
+        
+        if (lastFrame->payload.size() > static_cast<std::size_t>(maxPayloadLines * bytesPerLine)) {
+            wattron(win, COLOR_PAIR(4));
+            mvwprintw(win, y, 2, "... (mas bytes)");
+            wattroff(win, COLOR_PAIR(4));
+        }
+    }
+    
+    wrefresh(win);
+}
+
 void drawInfo(WINDOW* win, int infoPage = 0) {
     werase(win);
     box(win, 0, 0);
@@ -207,12 +437,41 @@ int runTuiApp(TapDevice& tap) {
     getmaxyx(stdscr, termH, termW);
     int headerH = 5;
     int footerH = 4;
-    int logH = termH - headerH - footerH;
+    
+    // Crear panel de desglose debajo del header si hay espacio
+    int breakdownH = 0;
+    WINDOW* breakdownWin = nullptr;
+    if (termH > 35) {  // Solo si hay suficiente altura
+        breakdownH = 18;
+    }
+    
+    int logH = termH - headerH - footerH - breakdownH;
     if (logH < 4) logH = 4;
 
+    // Crear paneles laterales para TX/RX si hay espacio suficiente
+    int sidePanelW = 0;
+    int logW = termW;
+    WINDOW* txPanelWin = nullptr;
+    WINDOW* rxPanelWin = nullptr;
+    
+    if (termW > 150) {  // Espacio para ambos paneles
+        sidePanelW = 55;
+        logW = termW - (sidePanelW * 2) - 2;
+        txPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, 0);
+        rxPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, termW - sidePanelW);
+    } else if (termW > 100) {  // Espacio solo para panel RX
+        sidePanelW = 55;
+        logW = termW - sidePanelW - 1;
+        rxPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, logW + 1);
+    }
+
     WINDOW* headerWin = newwin(headerH, termW, 0, 0);
-    WINDOW* logWin = newwin(logH, termW, headerH, 0);
-    WINDOW* footerWin = newwin(footerH, termW, headerH + logH, 0);
+    if (breakdownH > 0) {
+        breakdownWin = newwin(breakdownH, termW, headerH, 0);
+    }
+    int logX = (txPanelWin != nullptr) ? sidePanelW + 1 : 0;
+    WINDOW* logWin = newwin(logH, logW, headerH + breakdownH, logX);
+    WINDOW* footerWin = newwin(footerH, termW, headerH + breakdownH + logH, 0);
 
     LogBuffer log;
     std::string status = "Inicializando";
@@ -242,12 +501,23 @@ int runTuiApp(TapDevice& tap) {
     int infoPage = 0;
     int scrollOffset = 0;
     std::optional<EthernetFrame> lastRxFrame;
+    std::optional<EthernetFrame> lastTxFrame;
+    bool showTxBreakdown = true;  // Por defecto mostrar TX en desglose
     while (running) {
         drawHeader(headerWin, tap.name(), status);
+        if (breakdownWin) {
+            drawFrameBreakdown(breakdownWin, showTxBreakdown ? lastTxFrame : lastRxFrame, showTxBreakdown);
+        }
         if (showInfo) {
             drawInfo(logWin, infoPage);
         } else {
             drawLog(logWin, log, scrollOffset);
+        }
+        if (txPanelWin) {
+            drawLastTxPanel(txPanelWin, lastTxFrame);
+        }
+        if (rxPanelWin) {
+            drawLastRxPanel(rxPanelWin, lastRxFrame);
         }
         drawFooter(footerWin);
 
@@ -270,12 +540,16 @@ int runTuiApp(TapDevice& tap) {
                 infoPage = (infoPage + 1) % 3;
             } else if (ch == 's' || ch == 'S') {
                 auto frame = makeDefaultDemoFrame(0);
+                lastTxFrame = frame;
+                showTxBreakdown = true;
                 auto bytes = serializeEthernetII(frame);
                 int sent = tap.write(bytes.data(), bytes.size());
                 status = txResult(sent);
                 log.push("[TX] Demo 0x00 (" + std::to_string(bytes.size()) + "B) -> " + status);
             } else if (ch == 'd' || ch == 'D') {
                 auto frame = makeDefaultDemoFrame(1);
+                lastTxFrame = frame;
+                showTxBreakdown = true;
                 auto bytes = serializeEthernetII(frame);
                 int sent = tap.write(bytes.data(), bytes.size());
                 status = txResult(sent);
@@ -317,6 +591,12 @@ int runTuiApp(TapDevice& tap) {
                     status = "Custom no cargado";
                     log.push("[WARN] [TX] Custom falló: no hay bytes");
                 } else {
+                    // Parsear el custom para guardarlo en lastTxFrame
+                    auto customFrameOpt = parseEthernetII(customPacket->data(), customPacket->size());
+                    if (customFrameOpt) {
+                        lastTxFrame = customFrameOpt;
+                        showTxBreakdown = true;
+                    }
                     int sent = tap.write(customPacket->data(), customPacket->size());
                     status = txResult(sent);
                     log.push("[TX] Custom -> " + status);
@@ -346,6 +626,9 @@ int runTuiApp(TapDevice& tap) {
                 const std::string typeLabel = etherTypeLabel(demoFrame.etherType);
                 log.push("[RX] Demo simulado: " + describeEthernetII(demoFrame) + " proto=" + typeLabel);
                 status = "RX Demo simulado (como si fuera del kernel)";
+            } else if (ch == 'b' || ch == 'B') {
+                showTxBreakdown = !showTxBreakdown;
+                status = showTxBreakdown ? "Mostrando desglose TX" : "Mostrando desglose RX";
             } else if (ch == KEY_UP) {
                 scrollOffset -= 1;
             } else if (ch == KEY_DOWN) {
@@ -374,6 +657,15 @@ int runTuiApp(TapDevice& tap) {
         }
     }
 
+    if (txPanelWin) {
+        delwin(txPanelWin);
+    }
+    if (rxPanelWin) {
+        delwin(rxPanelWin);
+    }
+    if (breakdownWin) {
+        delwin(breakdownWin);
+    }
     delwin(footerWin);
     delwin(logWin);
     delwin(headerWin);

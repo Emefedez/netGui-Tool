@@ -139,7 +139,99 @@ El código asume que la interfaz virtual ya ha sido configurada externamente. Si
 
 ## 4. Interfaz TUI (ncurses)
 
-La aplicación usa una interfaz en terminal con paneles fijos para estado, log y ayuda.
+La aplicación usa una interfaz en terminal con paneles múltiples y adaptables según el tamaño de la terminal.
+
+### Layout Dinámico y Paneles
+
+La interfaz se adapta automáticamente al tamaño de la terminal:
+
+#### Configuración Básica (Terminal pequeña: <100 columnas)
+```
+┌─────────────────── Header ───────────────────┐
+│ NetGui-Tool (TUI ncurses)                    │
+│ Interfaz: tap0 | Estado: ...                 │
+└──────────────────────────────────────────────┘
+┌─────────────────── Log ──────────────────────┐
+│ [RX] aa:bb:cc... -> ff:ff:ff... proto=ARP    │
+│ [TX] Demo 0x00 (60B) -> TX OK                │
+│ ...                                          │
+└──────────────────────────────────────────────┘
+┌────────────────── Footer ────────────────────┐
+│ [s][d][t][c][e][r][x][b][i][q]               │
+└──────────────────────────────────────────────┘
+```
+
+#### Configuración Media (100-150 columnas)
+```
+┌─────────── Header ─────────────┐┌── Último RX ──┐
+│ NetGui-Tool                    ││ Dst: ff:ff:... │
+└────────────────────────────────┘│ Src: aa:bb:... │
+┌────────────── Log ─────────────┐│ Tipo: 0x0806   │
+│ [RX] paquete...                ││ Payload:       │
+│ [TX] enviado...                ││ 0000: 00 01... │
+│ ...                            ││ ...            │
+└────────────────────────────────┘└────────────────┘
+```
+
+#### Configuración Completa (>150 columnas, >35 líneas)
+```
+┌──────────────────────────── Header ────────────────────────────┐
+│ NetGui-Tool (TUI) - tap0 - Estado: Listo                       │
+└────────────────────────────────────────────────────────────────┘
+┌────────────── Desglose Trama TX/RX (coloreado) ───────────────┐
+│ Trama completa: 60 bytes                                       │
+│ MAC Destino (6 bytes):  FF FF FF FF FF FF = ff:ff:ff:ff:ff:ff │
+│ MAC Origen (6 bytes):   02 00 00 00 00 01 = 02:00:00:00:00:01 │
+│ EtherType (2 bytes):    88 B5 = 0x88B5 (Demo)                 │
+│ Payload (46 bytes):     42 00 00 00 00 00 00 00...             │
+└────────────────────────────────────────────────────────────────┘
+┌─ Último TX ─┐┌────────── Log ──────────┐┌─── Último RX ────┐
+│ Dst: ff:... ││ [RX] Capturado...       ││ Dst: 33:33:...   │
+│ Src: 02:... ││ [TX] Enviado...         ││ Src: aa:bb:...   │
+│ Tipo: 0x88B5││ [INFO] Custom cargado   ││ Tipo: 0x86DD     │
+│ Payload:    ││ [WARN] No respuesta     ││ Payload:         │
+│ 0000: 42 00││ ...                     ││ 0000: 60 00...   │
+│ 0010: 00 00││                         ││ 0010: 00 1E...   │
+│ ...         ││                         ││ ...              │
+└─────────────┘└─────────────────────────┘└──────────────────┘
+```
+
+### Panel de Desglose de Trama (Nuevo)
+
+**Aparece debajo del header si la terminal tiene >35 líneas de altura.**
+
+Muestra la estructura completa del último paquete TX o RX enviado/capturado, **coloreando cada sección de la trama Ethernet**:
+
+*   **MAC Destino (6 bytes)**: Amarillo - Los primeros 6 bytes de la trama
+*   **MAC Origen (6 bytes)**: Cyan - Bytes 7-12 de la trama
+*   **EtherType (2 bytes)**: Magenta - Bytes 13-14, identifica el protocolo
+*   **Payload (resto)**: Verde - Datos útiles del protocolo (mínimo 46 bytes)
+
+**Funcionalidad**:
+*   Se actualiza automáticamente al enviar/recibir paquetes
+*   Presiona `[b]` para **alternar entre TX y RX** en el desglose
+*   Muestra el tamaño total de la trama serializada
+*   Útil para entender exactamente qué bytes se están enviando/recibiendo
+
+### Paneles Laterales TX y RX (Nuevo)
+
+#### Panel de Último TX Enviado (izquierda)
+Aparece si la terminal tiene >150 columnas. Muestra:
+*   Direcciones MAC origen y destino
+*   Tipo de protocolo (EtherType) con nombre
+*   **Hex dump completo** del payload con offsets
+*   **Vista ASCII** de caracteres imprimibles
+
+Se actualiza automáticamente cuando:
+*   Presionas `[s]` o `[d]` (demos)
+*   Presionas `[c]` (enviar custom)
+
+#### Panel de Último RX Capturado (derecha)
+Aparece si la terminal tiene >100 columnas. Muestra la misma información que el panel TX, pero para paquetes capturados del kernel.
+
+Se actualiza automáticamente cuando:
+*   El kernel genera tráfico (ping, curl, IPv6 automático)
+*   Presionas `[t]` (demo RX simulado)
 
 ### Colores por segmento
 El log aplica colores por partes, no por línea completa:
@@ -167,9 +259,11 @@ El panel de log tiene un **scrollbar** vertical en el borde derecho:
 
 ### Demos (Paquetes de Prueba)
 
-*   **`s` (Demo TX 0x00)**: Envía un paquete de demostración con payload relleno de 0x00. Se muestra como `[TX]` en el log.
-*   **`d` (Demo TX 0xFF)**: Envía un paquete de demostración con payload relleno de 0xFF. Se muestra como `[TX]` en el log.
-*   **`t` (Demo RX simulado)**: Simula que el kernel envía un paquete demo (como si alguien hiciera `ping`). Se muestra como `[RX]` en el log.
+*   **`s` (Demo TX 0x00)**: Envía un paquete de demostración con payload relleno de 0x00. Se muestra como `[TX]` en el log y actualiza el panel TX.
+*   **`d` (Demo TX 0xFF)**: Envía un paquete de demostración con payload relleno de 0xFF. Se muestra como `[TX]` en el log y actualiza el panel TX.
+*   **`t` (Demo RX simulado)**: Simula que el kernel envía un paquete demo (como si alguien hiciera `ping`). Se muestra como `[RX]` en el log y actualiza el panel RX.
+*   **`c` (Enviar custom)**: Envía el paquete custom cargado desde `custom_packet.hex`. Actualiza el panel TX con el contenido enviado.
+*   **`b` (Toggle TX/RX)**: Alterna el panel de desglose entre mostrar el último TX enviado o el último RX capturado.
 *   Todos usan la estructura de trama Ethernet estándar (14 bytes de cabecera + 46 bytes de payload mínimo).
 
 ### Pantalla de información (Paginada)
@@ -181,3 +275,293 @@ Las 3 páginas cubren:
 1.  **Conceptos básicos**: TX/RX, TAP, estructura Ethernet, EtherType, payload.
 2.  **Editar paquetes custom**: Formato hex, estructura mínima, ejemplo de edición.
 3.  **Valores de bits y ejemplos**: MAC addresses, códigos de EtherType, patrones de payload.
+
+### Panel Lateral de RX
+
+Cuando la terminal tiene más de 100 columnas de ancho, aparece un **panel lateral derecho** que muestra en tiempo real el último paquete RX capturado:
+
+*   **Cabecera Ethernet**: Direcciones MAC origen/destino y tipo de protocolo.
+*   **Hex Dump**: Vista hexadecimal del payload con offsets (como `hexdump -C`).
+*   **Vista ASCII**: Caracteres imprimibles al lado del hex, otros se muestran como `.`
+*   **Actualización automática**: Se actualiza cada vez que llega un nuevo paquete RX.
+
+---
+
+## 5. Pruebas Prácticas desde Terminal
+
+### ¿Cómo funciona la captura RX en la práctica?
+
+Cuando ejecutas comandos de red normales en otra terminal (mientras la app TUI está corriendo), el kernel Linux genera tráfico que intenta salir por la interfaz `tap0`. La app lo captura ANTES de que llegue a ningún destino físico.
+
+### Configuración Inicial Requerida
+
+```bash
+# 1. Crear la interfaz TAP
+sudo ip tuntap add dev tap0 mode tap
+
+# 2. Activar la interfaz (equivalente a "conectar el cable")
+sudo ip link set up dev tap0
+
+# 3. Asignar una dirección IP (necesario para ping/curl)
+sudo ip addr add 192.168.100.50/24 dev tap0
+
+# 4. (Opcional) Añadir ruta para redirigir tráfico por tap0
+sudo ip route add 192.168.100.0/24 dev tap0
+```
+
+### Prueba 1: Ping (Protocolo ICMP)
+
+```bash
+# En otra terminal (mientras la app TUI corre):
+ping -I tap0 192.168.100.1
+```
+
+**Qué verás en la app**:
+```
+[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
+[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=IPv4  payload=84 bytes
+```
+
+**Explicación**:
+1. Primero el kernel envía un **ARP request** buscando quién tiene la IP 192.168.100.1 (broadcast a ff:ff:ff:ff:ff:ff)
+2. Como nadie responde, envía el **ICMP Echo Request** (ping) de todas formas
+
+**Qué puedes hacer**:
+- Presiona `[x]` para guardar el paquete ARP o ICMP como custom
+- Presiona `[c]` para reinyectarlo al kernel (loop de prueba)
+
+### Prueba 2: ARP Probing (Protocolo ARP)
+
+```bash
+# Instala arping si no lo tienes
+sudo apt install arping
+
+# Lanzar solicitud ARP
+sudo arping -I tap0 -c 3 192.168.100.200
+```
+
+**Qué verás**:
+```
+[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
+[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
+[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
+```
+
+**Anatomía del paquete ARP capturado**:
+- **Dst MAC**: `ff:ff:ff:ff:ff:ff` (broadcast, pregunta "a todos")
+- **Src MAC**: Tu MAC del tap0
+- **EtherType**: `0x0806` (ARP)
+- **Payload**: 28 bytes de ARP header + 18 bytes de padding = 46 bytes
+
+### Prueba 3: Tráfico IPv6 Automático (Neighbor Discovery)
+
+```bash
+# No necesitas hacer nada, solo:
+sudo ip link set up dev tap0
+```
+
+**Qué verás automáticamente**:
+```
+[RX] aa:bb:cc:dd:ee:ff -> 33:33:00:00:00:02  proto=IPv6  payload=62 bytes
+[RX] aa:bb:cc:dd:ee:ff -> 33:33:ff:xx:yy:zz  proto=IPv6  payload=78 bytes
+```
+
+**Explicación**:
+- El kernel activa IPv6 por defecto en interfaces nuevas
+- Envía mensajes **ICMPv6 Router Solicitation** (busca routers)
+- Envía **Neighbor Discovery** (equivalente a ARP para IPv6)
+- **Dst MAC** empieza con `33:33:` (multicast IPv6)
+
+**Para desactivar este ruido**:
+```bash
+sudo sysctl -w net.ipv6.conf.tap0.disable_ipv6=1
+```
+
+### Prueba 4: Conexión TCP (Curl/Netcat)
+
+```bash
+# Intenta conectar a un servidor web por tap0
+curl --interface tap0 http://192.168.100.1
+```
+
+**Qué verás**:
+```
+[RX] aa:bb:cc:dd:ee:ff -> ff:ff:ff:ff:ff:ff  proto=ARP   payload=46 bytes
+[RX] aa:bb:cc:dd:ee:ff -> [gateway_mac]      proto=IPv4  payload=74 bytes  # SYN packet
+[RX] aa:bb:cc:dd:ee:ff -> [gateway_mac]      proto=IPv4  payload=66 bytes  # ACK packet
+```
+
+Verás:
+1. **ARP request** para resolver la MAC del gateway
+2. **TCP SYN** (intento de abrir conexión HTTP)
+3. Posibles **retransmisiones** si nadie responde
+
+### Prueba 5: Inyección TX + Captura RX (Loop)
+
+```bash
+# En la app TUI:
+# 1. Presiona [s] para enviar demo TX
+# 2. Mira el log: aparece [TX] en rojo
+# 3. El kernel recibe el paquete y lo procesa
+# 4. Si el kernel responde (ej: ICMP unreachable), verás [RX] en verde
+```
+
+**Flujo completo**:
+```
+[TX] ff:ff:ff:ff:ff:ff -> 02:00:00:00:00:01  proto=Demo  payload=46 bytes  (tu app envía)
+[RX] (posible respuesta del kernel si procesa el paquete)
+```
+
+### Anatomía Completa de una Trama Ethernet Capturada
+
+Cuando capturas un paquete con `[x]` y lo abres con `[e]`, ves esto:
+
+```hex
+# custom_packet.hex (ejemplo real de ARP request)
+
+# Cabecera Ethernet (14 bytes obligatorios)
+ff ff ff ff ff ff    # [0-5]   Dst MAC: broadcast
+aa bb cc dd ee ff    # [6-11]  Src MAC: tu interfaz
+08 06                # [12-13] EtherType: 0x0806 (ARP)
+
+# Payload ARP (28 bytes reales)
+00 01                # Hardware type: Ethernet (1)
+08 00                # Protocol type: IPv4 (0x0800)
+06                   # HW address length: 6 (MAC)
+04                   # Protocol address length: 4 (IPv4)
+00 01                # Opcode: 1 (request)
+aa bb cc dd ee ff    # Sender MAC
+c0 a8 64 32          # Sender IP: 192.168.100.50
+00 00 00 00 00 00    # Target MAC: desconocida (00:00:00:00:00:00)
+c0 a8 64 01          # Target IP: 192.168.100.1
+
+# Padding (18 bytes de relleno para llegar a 46)
+00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+```
+
+**Total**: 14 (cabecera) + 28 (ARP) + 18 (padding) = **60 bytes** (mínimo Ethernet)
+
+### ¿Por Qué el Padding Automático?
+
+El código en `serializeEthernetII()` hace:
+
+```cpp
+if (frame.payload.size() < 46) {
+    buffer.resize(14 + 46);  // Rellena con ceros hasta 46 bytes de payload
+}
+```
+
+**Razón**: El estándar IEEE 802.3 exige un **tamaño mínimo de trama de 64 bytes** (incluyendo 4 bytes de FCS/CRC que el hardware añade). Como tu programa no maneja el CRC (lo hace el driver), debe enviar mínimo 60 bytes (14 cabecera + 46 payload).
+
+### Herramientas Adicionales para Testing
+
+```bash
+# 1. Tcpdump (para comparar con tu app)
+sudo tcpdump -i tap0 -e -xx
+
+# 2. Hping3 (enviar paquetes custom desde fuera)
+sudo hping3 -I tap0 --rawip --data 100 192.168.100.1
+
+# 3. Scapy (Python interactivo)
+sudo scapy
+>>> sendp(Ether(dst="ff:ff:ff:ff:ff:ff")/IP()/ICMP(), iface="tap0")
+```
+
+### Casos de Uso Avanzados
+
+1. **Fuzzing de protocolos**: Modifica el payload hex para enviar tramas malformadas y ver cómo reacciona el kernel.
+2. **ARP Spoofing simulado**: Captura un ARP reply, edita la MAC origen, reenvía con `[c]`.
+3. **Monitor de broadcast**: Deja la app corriendo y observa qué servicios del sistema usan broadcast (DHCP, NetBIOS, etc).
+4. **Testing de firewall**: Configura `iptables` en tap0 y verifica qué paquetes bloquea observando el log RX.
+
+### Notas Importantes
+
+- **Sin respuestas**: Como la app captura pero no responde automáticamente, verás muchos "timeouts" en ping/curl. Esto es normal.
+- **Broadcast inicial**: Al activar tap0, verás 2-3 paquetes IPv6 automáticos. Es el kernel anunciándose en la red.
+- **Performance**: En modo no bloqueante con poll, la app consulta el TAP cada 100ms. Si necesitas capturar tráfico de alta velocidad, ajusta el timeout en `poll()`.
+
+---
+
+## 6. Estructura Interna de Ethernet II (Sin "Magic Headers")
+
+### Mito: "Ethernet tiene un campo de longitud antes del payload"
+
+**Falso para Ethernet II** (el que usamos). Confusión común con IEEE 802.3 (Ethernet original).
+
+### Realidad: Solo 14 bytes de cabecera fija
+
+```
+┌─────────────────────────────────────────────┐
+│  Dst MAC (6) │ Src MAC (6) │ EtherType (2)  │  ← Cabecera (14 bytes)
+├─────────────────────────────────────────────┤
+│          Payload (46-1500 bytes)            │  ← Datos útiles
+│              (sin longitud explícita)       │
+└─────────────────────────────────────────────┘
+```
+
+**¿Cómo sabe el receptor cuántos bytes tiene el payload?**
+
+1. **El hardware de red** cuenta los bytes físicos recibidos antes de EOF (End of Frame)
+2. **El driver del kernel** pasa el tamaño total a `tap.read()`
+3. **Tu código** resta 14: `payloadSize = bytesLeidos - 14`
+
+### Comparación: Ethernet II vs IEEE 802.3
+ _____________________________________________________________________
+| Aspecto          | Ethernet II (usado aquí) | IEEE 802.3 (antiguo) |
+|------------------|--------------------------|----------------------|
+| Campo byte 12-13 | EtherType (tipo)         | Length (longitud)    |
+| Identificador    | ≥ 0x0600                 | ≤ 1500               |
+| Uso moderno      | **Estándar actual**      | Raro (Token Ring)    |
+
+**Discriminador**: Si el campo vale ≥ 1536 (0x0600), es EtherType. Si vale ≤ 1500, es longitud.
+
+### ¿Por qué funciona editar solo el payload?
+
+```cpp
+// parseHexBytesFile() convierte TODO el archivo hex a bytes
+std::vector<uint8_t> rawBytes = {0xff, 0xff, ..., 0x00, 0x00}; // N bytes
+
+// parseEthernetII() divide:
+EthernetFrame frame;
+frame.dst   = rawBytes[0..5];     // Primeros 6
+frame.src   = rawBytes[6..11];    // Segundos 6
+frame.type  = rawBytes[12..13];   // Siguientes 2
+frame.payload.assign(rawBytes.begin() + 14, rawBytes.end()); // TODO el resto
+```
+
+**No hay validación de longitud** porque:
+- El estándar confía en que el tamaño físico es correcto
+- El padding lo añade `serializeEthernetII()` automáticamente si falta
+- Ethernet asume que si llegó al receptor, el tamaño era válido (CRC correcto)
+
+### Ejemplo práctico: Añadir 10 bytes al payload
+
+```hex
+# custom_packet.hex ANTES (60 bytes totales)
+ff ff ff ff ff ff aa bb cc dd ee ff 88 b5
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+# custom_packet.hex DESPUÉS (70 bytes totales)
+ff ff ff ff ff ff aa bb cc dd ee ff 88 b5
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00
+AA BB CC DD EE FF 11 22 33 44   # 10 bytes nuevos
+```
+
+**Resultado automático**:
+- `frame.payload.size()` pasa de 46 a 56
+- `describeEthernetII()` muestra "payload=56 bytes"
+- **No necesitas tocar ningún "campo de longitud"** porque no existe
+
+### ¿Y el CRC/FCS (Frame Check Sequence)?
+
+**No lo manejas tú**. Los últimos 4 bytes de una trama Ethernet física son el CRC:
+- Lo **añade automáticamente** el hardware de red al transmitir
+- Lo **verifica y elimina** el hardware al recibir
+- Tu programa **nunca ve esos 4 bytes** - el driver ya los procesó
+
+Por eso el código trabaja con tramas de "60 bytes mínimo" en lugar de 64: los 4 del CRC son invisibles para la aplicación.
