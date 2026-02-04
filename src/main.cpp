@@ -1,4 +1,4 @@
-#include "netgui_gui.h"
+#include "tui_app.h"
 #include "tap.h"
 
 #include <exception>
@@ -7,14 +7,14 @@
 /**
  * @brief Program entry point.
  *
- * Keeps the entry small: TAP init + delegate to GUI loop.
+ * Keeps the entry small: TAP init + delegate to TUI loop.
  */
 int main() {
     try
     {
         TapDevice tap("tap0");
         tap.setNonBlocking(true);
-        return runNetGuiApp(tap);
+        return runTuiApp(tap);
     }
     catch (const std::exception& e)
     {

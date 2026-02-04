@@ -139,10 +139,10 @@
 				},
 				{
 					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
+					"value" : "CXX compiler"
 				}
 			],
-			"type" : "FILEPATH",
+			"type" : "STRING",
 			"value" : "/usr/bin/g++"
 		},
 		{
@@ -267,10 +267,10 @@
 				},
 				{
 					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
+					"value" : "C compiler"
 				}
 			],
-			"type" : "FILEPATH",
+			"type" : "STRING",
 			"value" : "/usr/bin/gcc"
 		},
 		{
@@ -1194,19 +1194,83 @@
 			"value" : "FALSE"
 		},
 		{
-			"name" : "FIND_PACKAGE_MESSAGE_DETAILS_raylib",
+			"name" : "CURSES_CURSES_LIBRARY",
+			"properties" : 
+			[
+				{
+					"name" : "ADVANCED",
+					"value" : "1"
+				},
+				{
+					"name" : "HELPSTRING",
+					"value" : "Path to a library."
+				}
+			],
+			"type" : "FILEPATH",
+			"value" : "/usr/lib/libcurses.so"
+		},
+		{
+			"name" : "CURSES_FORM_LIBRARY",
+			"properties" : 
+			[
+				{
+					"name" : "ADVANCED",
+					"value" : "1"
+				},
+				{
+					"name" : "HELPSTRING",
+					"value" : "Path to a library."
+				}
+			],
+			"type" : "FILEPATH",
+			"value" : "/usr/lib/libform.so"
+		},
+		{
+			"name" : "CURSES_INCLUDE_PATH",
+			"properties" : 
+			[
+				{
+					"name" : "ADVANCED",
+					"value" : "1"
+				},
+				{
+					"name" : "HELPSTRING",
+					"value" : "Path to a file."
+				}
+			],
+			"type" : "PATH",
+			"value" : "/usr/include"
+		},
+		{
+			"name" : "CURSES_NCURSES_LIBRARY",
+			"properties" : 
+			[
+				{
+					"name" : "ADVANCED",
+					"value" : "1"
+				},
+				{
+					"name" : "HELPSTRING",
+					"value" : "Path to a library."
+				}
+			],
+			"type" : "FILEPATH",
+			"value" : "/usr/lib/libncurses.so"
+		},
+		{
+			"name" : "FIND_PACKAGE_MESSAGE_DETAILS_Curses",
 			"properties" : 
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "Details about finding raylib"
+					"value" : "Details about finding Curses"
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "[/usr/lib/libraylib.so][/usr/include][v()]"
+			"value" : "[/usr/lib/libcurses.so][/usr/include][v()]"
 		},
 		{
-			"name" : "PC_RAYLIB_CFLAGS",
+			"name" : "NCURSES_CFLAGS",
 			"properties" : 
 			[
 				{
@@ -1215,10 +1279,10 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "-I/usr/include"
+			"value" : "-D_DEFAULT_SOURCE;-D_XOPEN_SOURCE=600"
 		},
 		{
-			"name" : "PC_RAYLIB_CFLAGS_I",
+			"name" : "NCURSES_CFLAGS_I",
 			"properties" : 
 			[
 				{
@@ -1230,7 +1294,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_CFLAGS_OTHER",
+			"name" : "NCURSES_CFLAGS_OTHER",
 			"properties" : 
 			[
 				{
@@ -1239,10 +1303,10 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : ""
+			"value" : "-D_DEFAULT_SOURCE;-D_XOPEN_SOURCE=600"
 		},
 		{
-			"name" : "PC_RAYLIB_FOUND",
+			"name" : "NCURSES_FOUND",
 			"properties" : 
 			[
 				{
@@ -1254,7 +1318,7 @@
 			"value" : "1"
 		},
 		{
-			"name" : "PC_RAYLIB_INCLUDEDIR",
+			"name" : "NCURSES_INCLUDEDIR",
 			"properties" : 
 			[
 				{
@@ -1266,31 +1330,7 @@
 			"value" : "/usr/include"
 		},
 		{
-			"name" : "PC_RAYLIB_INCLUDE_DIRS",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : ""
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : "/usr/include"
-		},
-		{
-			"name" : "PC_RAYLIB_LDFLAGS",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : ""
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : "-L/usr/lib;-lraylib"
-		},
-		{
-			"name" : "PC_RAYLIB_LDFLAGS_OTHER",
+			"name" : "NCURSES_INCLUDE_DIRS",
 			"properties" : 
 			[
 				{
@@ -1302,7 +1342,31 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_LIBDIR",
+			"name" : "NCURSES_LDFLAGS",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : ""
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : "-lncursesw"
+		},
+		{
+			"name" : "NCURSES_LDFLAGS_OTHER",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : ""
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : ""
+		},
+		{
+			"name" : "NCURSES_LIBDIR",
 			"properties" : 
 			[
 				{
@@ -1314,7 +1378,7 @@
 			"value" : "/usr/lib"
 		},
 		{
-			"name" : "PC_RAYLIB_LIBRARIES",
+			"name" : "NCURSES_LIBRARIES",
 			"properties" : 
 			[
 				{
@@ -1323,22 +1387,10 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "raylib"
+			"value" : "ncursesw"
 		},
 		{
-			"name" : "PC_RAYLIB_LIBRARY_DIRS",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : ""
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : "/usr/lib"
-		},
-		{
-			"name" : "PC_RAYLIB_LIBS",
+			"name" : "NCURSES_LIBRARY_DIRS",
 			"properties" : 
 			[
 				{
@@ -1350,7 +1402,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_LIBS_L",
+			"name" : "NCURSES_LIBS",
 			"properties" : 
 			[
 				{
@@ -1362,7 +1414,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_LIBS_OTHER",
+			"name" : "NCURSES_LIBS_L",
 			"properties" : 
 			[
 				{
@@ -1374,7 +1426,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_LIBS_PATHS",
+			"name" : "NCURSES_LIBS_OTHER",
 			"properties" : 
 			[
 				{
@@ -1386,7 +1438,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_MODULE_NAME",
+			"name" : "NCURSES_LIBS_PATHS",
 			"properties" : 
 			[
 				{
@@ -1395,10 +1447,22 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "raylib"
+			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_PREFIX",
+			"name" : "NCURSES_MODULE_NAME",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : ""
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : "ncurses"
+		},
+		{
+			"name" : "NCURSES_PREFIX",
 			"properties" : 
 			[
 				{
@@ -1410,7 +1474,7 @@
 			"value" : "/usr"
 		},
 		{
-			"name" : "PC_RAYLIB_STATIC_CFLAGS",
+			"name" : "NCURSES_STATIC_CFLAGS",
 			"properties" : 
 			[
 				{
@@ -1419,22 +1483,10 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "-I/usr/include"
+			"value" : "-D_DEFAULT_SOURCE;-D_XOPEN_SOURCE=600"
 		},
 		{
-			"name" : "PC_RAYLIB_STATIC_CFLAGS_I",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : ""
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : ""
-		},
-		{
-			"name" : "PC_RAYLIB_STATIC_CFLAGS_OTHER",
+			"name" : "NCURSES_STATIC_CFLAGS_I",
 			"properties" : 
 			[
 				{
@@ -1446,7 +1498,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_STATIC_INCLUDE_DIRS",
+			"name" : "NCURSES_STATIC_CFLAGS_OTHER",
 			"properties" : 
 			[
 				{
@@ -1455,22 +1507,10 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/usr/include"
+			"value" : "-D_DEFAULT_SOURCE;-D_XOPEN_SOURCE=600"
 		},
 		{
-			"name" : "PC_RAYLIB_STATIC_LDFLAGS",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : ""
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : "-L/usr/lib;-lraylib"
-		},
-		{
-			"name" : "PC_RAYLIB_STATIC_LDFLAGS_OTHER",
+			"name" : "NCURSES_STATIC_INCLUDE_DIRS",
 			"properties" : 
 			[
 				{
@@ -1482,7 +1522,19 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_STATIC_LIBDIR",
+			"name" : "NCURSES_STATIC_LDFLAGS",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : ""
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : "-lncursesw"
+		},
+		{
+			"name" : "NCURSES_STATIC_LDFLAGS_OTHER",
 			"properties" : 
 			[
 				{
@@ -1494,31 +1546,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_STATIC_LIBRARIES",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : ""
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : "raylib"
-		},
-		{
-			"name" : "PC_RAYLIB_STATIC_LIBRARY_DIRS",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : ""
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : "/usr/lib"
-		},
-		{
-			"name" : "PC_RAYLIB_STATIC_LIBS",
+			"name" : "NCURSES_STATIC_LIBDIR",
 			"properties" : 
 			[
 				{
@@ -1530,7 +1558,19 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_STATIC_LIBS_L",
+			"name" : "NCURSES_STATIC_LIBRARIES",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : ""
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : "ncursesw"
+		},
+		{
+			"name" : "NCURSES_STATIC_LIBRARY_DIRS",
 			"properties" : 
 			[
 				{
@@ -1542,7 +1582,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_STATIC_LIBS_OTHER",
+			"name" : "NCURSES_STATIC_LIBS",
 			"properties" : 
 			[
 				{
@@ -1554,7 +1594,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_STATIC_LIBS_PATHS",
+			"name" : "NCURSES_STATIC_LIBS_L",
 			"properties" : 
 			[
 				{
@@ -1566,19 +1606,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_VERSION",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : ""
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : "5.5.0"
-		},
-		{
-			"name" : "PC_RAYLIB_raylib_INCLUDEDIR",
+			"name" : "NCURSES_STATIC_LIBS_OTHER",
 			"properties" : 
 			[
 				{
@@ -1590,7 +1618,7 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_raylib_LIBDIR",
+			"name" : "NCURSES_STATIC_LIBS_PATHS",
 			"properties" : 
 			[
 				{
@@ -1602,7 +1630,19 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_raylib_PREFIX",
+			"name" : "NCURSES_VERSION",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : ""
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : "6.5.20240427"
+		},
+		{
+			"name" : "NCURSES_ncurses_INCLUDEDIR",
 			"properties" : 
 			[
 				{
@@ -1614,7 +1654,31 @@
 			"value" : ""
 		},
 		{
-			"name" : "PC_RAYLIB_raylib_VERSION",
+			"name" : "NCURSES_ncurses_LIBDIR",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : ""
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : ""
+		},
+		{
+			"name" : "NCURSES_ncurses_PREFIX",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : ""
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : ""
+		},
+		{
+			"name" : "NCURSES_ncurses_VERSION",
 			"properties" : 
 			[
 				{
@@ -1658,7 +1722,7 @@
 			"value" : "/usr/bin/pkg-config"
 		},
 		{
-			"name" : "__pkg_config_arguments_PC_RAYLIB",
+			"name" : "__pkg_config_arguments_NCURSES",
 			"properties" : 
 			[
 				{
@@ -1667,10 +1731,10 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "QUIET;raylib"
+			"value" : "QUIET;ncurses"
 		},
 		{
-			"name" : "__pkg_config_checked_PC_RAYLIB",
+			"name" : "__pkg_config_checked_NCURSES",
 			"properties" : 
 			[
 				{
@@ -1682,7 +1746,7 @@
 			"value" : "1"
 		},
 		{
-			"name" : "pkgcfg_lib_PC_RAYLIB_raylib",
+			"name" : "pkgcfg_lib_NCURSES_ncursesw",
 			"properties" : 
 			[
 				{
@@ -1695,7 +1759,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/usr/lib/libraylib.so"
+			"value" : "/usr/lib/libncursesw.so"
 		},
 		{
 			"name" : "prefix_result",
@@ -1708,50 +1772,6 @@
 			],
 			"type" : "INTERNAL",
 			"value" : "/usr/lib"
-		},
-		{
-			"name" : "raylib_DIR",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : "The directory containing a CMake configuration file for raylib."
-				}
-			],
-			"type" : "PATH",
-			"value" : "/usr/lib/cmake/raylib"
-		},
-		{
-			"name" : "raylib_INCLUDE_DIR",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "Path to a file."
-				}
-			],
-			"type" : "PATH",
-			"value" : "/usr/include"
-		},
-		{
-			"name" : "raylib_LIBRARY",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "Path to a library."
-				}
-			],
-			"type" : "FILEPATH",
-			"value" : "/usr/lib/libraylib.so"
 		},
 		{
 			"name" : "tcp_stack_cpp_BINARY_DIR",

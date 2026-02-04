@@ -99,3 +99,30 @@ El código asume que la interfaz virtual ya ha sido configurada externamente. Si
 *   **Creación**: `ip tuntap add dev tap0 mode tap` (Crea la tubería).
 *   **Enlace (Link Up)**: `ip link set up dev tap0` (Equivalente a conectar el cable).
 *   **Direccionamiento (Opcional)**: `ip addr add 192.168.X.X/24 dev tap0` (Necesario para que el Kernel responda a protocolos IP/ICMP).
+
+---
+
+## 4. Interfaz TUI (ncurses)
+
+La aplicación usa una interfaz en terminal con paneles fijos para estado, log y ayuda.
+
+### Colores por segmento
+El log aplica colores por partes, no por línea completa:
+
+*   **`[RX]`** en verde, **`[TX]`** en rojo, **`[INFO]`** en cian, **`[WARN]`** en amarillo.
+*   El campo **`proto=...`** se resalta en cian para distinguir el protocolo.
+
+### Scroll del log
+El panel de log tiene un **scrollbar** vertical en el borde derecho:
+
+*   Flechas ↑/↓ desplazan línea a línea.
+*   PgUp/PgDn desplazan por bloques.
+*   El diamante indica la posición actual dentro del historial.
+
+### Pantalla de información
+Con la tecla `i` se abre una pantalla de ayuda que explica:
+
+*   Qué significa **TX** y **RX** respecto al Kernel.
+*   Qué representa **EtherType**.
+*   Qué es el **payload**.
+*   Controles disponibles.

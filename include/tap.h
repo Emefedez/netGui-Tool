@@ -60,4 +60,7 @@ public:
 
     /** @brief Returns the kernel-assigned interface name (e.g. "tap0"). */
     const std::string& name() const { return dev_name; }
+
+    /** @brief Returns the file descriptor for use in select/poll. */
+    int getFd() const { return fd; }
 };

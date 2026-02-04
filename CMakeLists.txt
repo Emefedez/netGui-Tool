@@ -13,12 +13,12 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 add_executable(netGui ${SOURCES})
 
-# Buscar raylib instalado en el sistema
-find_package(raylib REQUIRED)
+find_package(Curses REQUIRED)
 
-target_link_libraries(netGui PRIVATE raylib)
+target_include_directories(netGui PRIVATE ${CURSES_INCLUDE_DIRS})
 
 target_link_libraries(netGui PRIVATE 
+    ${CURSES_LIBRARIES}
     pthread
     dl
     m

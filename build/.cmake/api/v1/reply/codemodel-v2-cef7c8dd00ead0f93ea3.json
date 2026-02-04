@@ -2,23 +2,10 @@
 	"configurations" : 
 	[
 		{
-			"abstractTargets" : 
-			[
-				{
-					"directoryIndex" : 0,
-					"id" : "raylib::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-raylib-Debug-009eef8101d9a0d8c2fa.json",
-					"name" : "raylib",
-					"projectIndex" : 0
-				}
-			],
+			"abstractTargets" : [],
 			"directories" : 
 			[
 				{
-					"abstractTargetIndexes" : 
-					[
-						0
-					],
 					"build" : ".",
 					"jsonFile" : "directory-.-Debug-9ad1a58d4644cf6543fa.json",
 					"minimumCMakeVersion" : 
@@ -37,10 +24,6 @@
 			"projects" : 
 			[
 				{
-					"abstractTargetIndexes" : 
-					[
-						0
-					],
 					"directoryIndexes" : 
 					[
 						0
@@ -57,7 +40,7 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "netGui::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-netGui-Debug-a9fe47d6e1b280e4e983.json",
+					"jsonFile" : "target-netGui-Debug-dc065a7e1e6aaf9c4797.json",
 					"name" : "netGui",
 					"projectIndex" : 0
 				}
