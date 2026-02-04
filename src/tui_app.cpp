@@ -302,72 +302,76 @@ void drawFrameBreakdown(WINDOW* win, const std::optional<EthernetFrame>& lastFra
     
     // Serializar la trama completa
     auto frameBytes = serializeEthernetII(*lastFrame);
-    
     int y = 1;
     int h, w;
     getmaxyx(win, h, w);
     
-    mvwprintw(win, y++, 2, "Trama completa: %zu bytes", frameBytes.size());
-    y++;
-    
-    // Mostrar bytes con colores por sección
-    const int bytesPerLine = 24;
-    std::size_t offset = 0;
-    
-    // Sección 1: MAC Destino (6 bytes) - Amarillo
-    mvwprintw(win, y++, 2, "MAC Destino (6 bytes):");
+    // Línea compacta de MAC Destino
+    std::string line = "Dst: ";
     wattron(win, COLOR_PAIR(4));
-    for (int i = 0; i < 6 && offset < frameBytes.size(); ++i, ++offset) {
-        mvwprintw(win, y, 2 + i * 3, "%02X", frameBytes[offset]);
+    for (int i = 0; i < 6 && i < (int)frameBytes.size(); ++i) {
+        char buf[4];
+        snprintf(buf, sizeof(buf), "%02X ", frameBytes[i]);
+        line += buf;
     }
     wattroff(win, COLOR_PAIR(4));
-    mvwprintw(win, y++, 21, " = %s", macToString(lastFrame->dst).c_str());
-    y++;
+    if (line.size() + 20 < (size_t)w) {
+        line += " | ";
+        line += macToString(lastFrame->dst);
+    }
+    mvwprintw(win, y++, 2, "%s", line.c_str());
     
-    // Sección 2: MAC Origen (6 bytes) - Cyan
-    mvwprintw(win, y++, 2, "MAC Origen (6 bytes):");
+    // Línea compacta de MAC Origen
+    line = "Src: ";
     wattron(win, COLOR_PAIR(3));
-    for (int i = 0; i < 6 && offset < frameBytes.size(); ++i, ++offset) {
-        mvwprintw(win, y, 2 + i * 3, "%02X", frameBytes[offset]);
+    for (int i = 6; i < 12 && i < (int)frameBytes.size(); ++i) {
+        char buf[4];
+        snprintf(buf, sizeof(buf), "%02X ", frameBytes[i]);
+        line += buf;
     }
     wattroff(win, COLOR_PAIR(3));
-    mvwprintw(win, y++, 21, " = %s", macToString(lastFrame->src).c_str());
-    y++;
+    if (line.size() + 20 < (size_t)w) {
+        line += " | ";
+        line += macToString(lastFrame->src);
+    }
+    mvwprintw(win, y++, 2, "%s", line.c_str());
     
-    // Sección 3: EtherType (2 bytes) - Magenta (usaremos COLOR_PAIR(2) en rojo)
+    // Línea de EtherType
+    line = "Type: ";
     init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
-    mvwprintw(win, y++, 2, "EtherType (2 bytes):");
     wattron(win, COLOR_PAIR(5));
-    for (int i = 0; i < 2 && offset < frameBytes.size(); ++i, ++offset) {
-        mvwprintw(win, y, 2 + i * 3, "%02X", frameBytes[offset]);
+    if (12 < (int)frameBytes.size() && 13 < (int)frameBytes.size()) {
+        char buf[20];
+        snprintf(buf, sizeof(buf), "%02X %02X", frameBytes[12], frameBytes[13]);
+        line += buf;
     }
     wattroff(win, COLOR_PAIR(5));
-    mvwprintw(win, y++, 10, " = 0x%04X (%s)", lastFrame->etherType, etherTypeLabel(lastFrame->etherType).c_str());
-    y++;
+    line += " | ";
+    char etBuf[40];
+    snprintf(etBuf, sizeof(etBuf), "0x%04X (%s)", lastFrame->etherType, etherTypeLabel(lastFrame->etherType).c_str());
+    line += etBuf;
+    mvwprintw(win, y++, 2, "%s", line.c_str());
     
-    // Sección 4: Payload (resto) - Verde claro
-    if (y < h - 3) {
-        mvwprintw(win, y++, 2, "Payload (%zu bytes):", lastFrame->payload.size());
-        const int maxPayloadLines = h - y - 2;
-        int lineCount = 0;
-        
-        wattron(win, COLOR_PAIR(1));
-        for (std::size_t i = 0; i < lastFrame->payload.size() && lineCount < maxPayloadLines; ) {
-            int x = 2;
-            for (int j = 0; j < bytesPerLine && i < lastFrame->payload.size() && x < w - 3; ++j, ++i) {
-                mvwprintw(win, y, x, "%02X", lastFrame->payload[i]);
-                x += 3;
-            }
-            y++;
-            lineCount++;
-        }
-        wattroff(win, COLOR_PAIR(1));
-        
-        if (lastFrame->payload.size() > static_cast<std::size_t>(maxPayloadLines * bytesPerLine)) {
-            wattron(win, COLOR_PAIR(4));
-            mvwprintw(win, y, 2, "... (mas bytes)");
-            wattroff(win, COLOR_PAIR(4));
-        }
+    // Línea de Payload
+    line = "Payload: ";
+    wattron(win, COLOR_PAIR(1));
+    int bytesShown = 0;
+    for (std::size_t i = 0; i < lastFrame->payload.size() && bytesShown < 16; ++i, ++bytesShown) {
+        char buf[4];
+        snprintf(buf, sizeof(buf), "%02X ", lastFrame->payload[i]);
+        line += buf;
+    }
+    wattroff(win, COLOR_PAIR(1));
+    if (lastFrame->payload.size() > 16) {
+        line += "...";
+    }
+    mvwprintw(win, y++, 2, "%s", line.c_str());
+    
+    // Línea de resumen
+    if (y < h - 1) {
+        char sumBuf[80];
+        snprintf(sumBuf, sizeof(sumBuf), "Total: %zu bytes (14 header + %zu payload)", frameBytes.size(), lastFrame->payload.size());
+        mvwprintw(win, y++, 2, "%s", sumBuf);
     }
     
     wrefresh(win);
@@ -441,8 +445,8 @@ int runTuiApp(TapDevice& tap) {
     // Crear panel de desglose debajo del header si hay espacio
     int breakdownH = 0;
     WINDOW* breakdownWin = nullptr;
-    if (termH > 35) {  // Solo si hay suficiente altura
-        breakdownH = 18;
+    if (termH > 30) {  // Solo si hay suficiente altura
+        breakdownH = 10;  // Reducido para dar más espacio al log
     }
     
     int logH = termH - headerH - footerH - breakdownH;
@@ -454,13 +458,13 @@ int runTuiApp(TapDevice& tap) {
     WINDOW* txPanelWin = nullptr;
     WINDOW* rxPanelWin = nullptr;
     
-    if (termW > 150) {  // Espacio para ambos paneles
-        sidePanelW = 55;
+    if (termW > 160) {  // Espacio para ambos paneles (más restrictivo)
+        sidePanelW = 48;  // Más pequeño
         logW = termW - (sidePanelW * 2) - 2;
         txPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, 0);
         rxPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, termW - sidePanelW);
-    } else if (termW > 100) {  // Espacio solo para panel RX
-        sidePanelW = 55;
+    } else if (termW > 110) {  // Espacio solo para panel RX
+        sidePanelW = 48;  // Más pequeño
         logW = termW - sidePanelW - 1;
         rxPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, logW + 1);
     }
@@ -524,7 +528,7 @@ int runTuiApp(TapDevice& tap) {
         struct pollfd pfd;
         pfd.fd = tap.getFd();
         pfd.events = POLLIN;
-        int ret = poll(&pfd, 1, 100);
+        int ret = poll(&pfd, 1, 10);  // 10ms para mejor responsividad de teclado
 
         int ch = getch();
         if (ch != ERR) {

@@ -173,45 +173,46 @@ La interfaz se adapta automáticamente al tamaño de la terminal:
 └────────────────────────────────┘└────────────────┘
 ```
 
-#### Configuración Completa (>150 columnas, >35 líneas)
+#### Configuración Completa (>160 columnas, >30 líneas)
 ```
 ┌──────────────────────────── Header ────────────────────────────┐
 │ NetGui-Tool (TUI) - tap0 - Estado: Listo                       │
 └────────────────────────────────────────────────────────────────┘
-┌────────────── Desglose Trama TX/RX (coloreado) ───────────────┐
-│ Trama completa: 60 bytes                                       │
-│ MAC Destino (6 bytes):  FF FF FF FF FF FF = ff:ff:ff:ff:ff:ff │
-│ MAC Origen (6 bytes):   02 00 00 00 00 01 = 02:00:00:00:00:01 │
-│ EtherType (2 bytes):    88 B5 = 0x88B5 (Demo)                 │
-│ Payload (46 bytes):     42 00 00 00 00 00 00 00...             │
+┌───── Desglose Trama TX/RX (compacto) ───────────────────────────┐
+│ Dst: FF FF FF FF FF FF | ff:ff:ff:ff:ff:ff                     │
+│ Src: 02 00 00 00 00 01 | 02:00:00:00:00:01                     │
+│ Type: 88 B5 | 0x88B5 (Demo)                                    │
+│ Payload: 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ...  │
+│ Total: 60 bytes (14 header + 46 payload)                       │
 └────────────────────────────────────────────────────────────────┘
-┌─ Último TX ─┐┌────────── Log ──────────┐┌─── Último RX ────┐
-│ Dst: ff:... ││ [RX] Capturado...       ││ Dst: 33:33:...   │
-│ Src: 02:... ││ [TX] Enviado...         ││ Src: aa:bb:...   │
-│ Tipo: 0x88B5││ [INFO] Custom cargado   ││ Tipo: 0x86DD     │
-│ Payload:    ││ [WARN] No respuesta     ││ Payload:         │
-│ 0000: 42 00││ ...                     ││ 0000: 60 00...   │
-│ 0010: 00 00││                         ││ 0010: 00 1E...   │
-│ ...         ││                         ││ ...              │
-└─────────────┘└─────────────────────────┘└──────────────────┘
+┌─ Último TX ─┐┌────────── Log ──────────────────┐┌─ Último RX ─┐
+│ Dst: ff:... ││ [RX] Capturado...               ││ Dst: 33:... │
+│ Src: 02:... ││ [TX] Enviado...                 ││ Src: aa:... │
+│ Tipo: 0x88B5││ [INFO] Custom cargado           ││ Tipo: 0x86D │
+│ Payload:    ││ [WARN] No respuesta             ││ Payload:    │
+│ 0000: 42 00││ ...                             ││ 0000: 60 00 │
+│ 0010: 00 00││                                 ││ 0010: 00 1E │
+│ ...         ││                                 ││ ...         │
+└─────────────┘└─────────────────────────────────┘└─────────────┘
 ```
 
 ### Panel de Desglose de Trama (Nuevo)
 
-**Aparece debajo del header si la terminal tiene >35 líneas de altura.**
+**Aparece debajo del header si la terminal tiene >30 líneas de altura.**
 
-Muestra la estructura completa del último paquete TX o RX enviado/capturado, **coloreando cada sección de la trama Ethernet**:
+Muestra la estructura completa del último paquete TX o RX de forma **compacta en 5 líneas**, manteniendo los colores por sección:
 
-*   **MAC Destino (6 bytes)**: Amarillo - Los primeros 6 bytes de la trama
-*   **MAC Origen (6 bytes)**: Cyan - Bytes 7-12 de la trama
-*   **EtherType (2 bytes)**: Magenta - Bytes 13-14, identifica el protocolo
-*   **Payload (resto)**: Verde - Datos útiles del protocolo (mínimo 46 bytes)
+*   **Dst (MAC Destino)**: Amarillo + interpretación legible
+*   **Src (MAC Origen)**: Cyan + interpretación legible
+*   **Type (EtherType)**: Magenta + nombre del protocolo
+*   **Payload**: Verde - primeros 16 bytes (truncado si hay más)
+*   **Total**: Resumen del tamaño
 
-**Funcionalidad**:
-*   Se actualiza automáticamente al enviar/recibir paquetes
-*   Presiona `[b]` para **alternar entre TX y RX** en el desglose
-*   Muestra el tamaño total de la trama serializada
-*   Útil para entender exactamente qué bytes se están enviando/recibiendo
+**Ventajas**:
+- Ocupa solo 5 líneas en lugar de 18
+- Deja mucho más espacio para el log
+- Sigue siendo informativo y coloreado
+- Se actualiza automáticamente
 
 ### Paneles Laterales TX y RX (Nuevo)
 
