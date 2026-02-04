@@ -1,1 +1,18 @@
+# Build artefacts
+/build/
+/CMakeFiles/
+/cmake_install.cmake
+/CMakeCache.txt
+/Makefile
+/build.ninja
+/compile_commands.json
+/netGui
+
+# Editor/IDE
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
 /.vscode

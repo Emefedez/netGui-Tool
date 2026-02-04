@@ -287,16 +287,27 @@ void drawLastTxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastTxFram
     y++;
     
     // Payload en hex + ASCII
-    mvwprintw(win, y++, 2, "Payload (%zu bytes):", lastTxFrame->payload.size());
+    const int payloadLabelY = y++;
+    mvwprintw(win, payloadLabelY, 2, "Payload (%zu bytes):", lastTxFrame->payload.size());
     const auto& payload = lastTxFrame->payload;
     // Calculate dynamic bytes per line: Width = 11 + 4*N
     int bytesPerLine = (w - 11) / 4;
-    if (bytesPerLine < 4) bytesPerLine = 4;
+    if (bytesPerLine < 1) bytesPerLine = 1;
     if (bytesPerLine > 16) bytesPerLine = 16;
 
-    const int maxLines = h - y - 2; // Espacio disponible
+    const int maxLines = std::max(0, h - y - 1); // Espacio disponible (hasta la línea antes del borde)
+    if (maxLines == 0 && !payload.empty()) {
+        const std::string prefix = "Payload (" + std::to_string(payload.size()) + " bytes): ";
+        const int maxText = std::max(0, w - 4);
+        const int available = std::max(0, maxText - static_cast<int>(prefix.size()));
+        const int maxBytes = std::max(0, (available + 1) / 3);
+        const std::string hex = toHex(payload, static_cast<std::size_t>(maxBytes));
+        const std::string line = prefix + hex;
+        mvwaddnstr(win, payloadLabelY, 2, line.c_str(), maxText);
+    }
+    int linesDrawn = 0;
     
-    for (std::size_t i = 0; i < payload.size() && (y - 6) < maxLines; i += bytesPerLine) {
+    for (std::size_t i = 0; i < payload.size() && linesDrawn < maxLines; i += bytesPerLine) {
         // Offset
         wattron(win, COLOR_PAIR(2));
         mvwprintw(win, y, 2, "%04zX", i);
@@ -313,7 +324,7 @@ void drawLastTxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastTxFram
         
         // Parte ASCII
         x = 7 + bytesPerLine * 3 + 2;
-        if (x + bytesPerLine < w - 2) {
+        if (x + bytesPerLine <= w - 2) {
             wattron(win, COLOR_PAIR(3));
             for (std::size_t j = 0; j < static_cast<std::size_t>(bytesPerLine) && (i + j) < payload.size(); ++j) {
                 std::uint8_t byte = payload[i + j];
@@ -324,10 +335,11 @@ void drawLastTxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastTxFram
         }
         
         y++;
+        linesDrawn++;
     }
     
     // Indicador si hay más datos
-    if (payload.size() > static_cast<std::size_t>(maxLines * bytesPerLine)) {
+    if (maxLines > 0 && payload.size() > static_cast<std::size_t>(maxLines * bytesPerLine)) {
         wattron(win, COLOR_PAIR(4));
         mvwprintw(win, y, 2, "... (%zu bytes mas)", 
                  payload.size() - (maxLines * bytesPerLine));
@@ -363,16 +375,27 @@ void drawLastRxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastRxFram
     y++;
     
     // Payload en hex + ASCII
-    mvwprintw(win, y++, 2, "Payload (%zu bytes):", lastRxFrame->payload.size());
+    const int payloadLabelY = y++;
+    mvwprintw(win, payloadLabelY, 2, "Payload (%zu bytes):", lastRxFrame->payload.size());
     const auto& payload = lastRxFrame->payload;
     // Calculate dynamic bytes per line: Width = 11 + 4*N
     int bytesPerLine = (w - 11) / 4;
-    if (bytesPerLine < 4) bytesPerLine = 4;
+    if (bytesPerLine < 1) bytesPerLine = 1;
     if (bytesPerLine > 16) bytesPerLine = 16;
     
-    const int maxLines = h - y - 2; // Espacio disponible
+    const int maxLines = std::max(0, h - y - 1); // Espacio disponible (hasta la línea antes del borde)
+    if (maxLines == 0 && !payload.empty()) {
+        const std::string prefix = "Payload (" + std::to_string(payload.size()) + " bytes): ";
+        const int maxText = std::max(0, w - 4);
+        const int available = std::max(0, maxText - static_cast<int>(prefix.size()));
+        const int maxBytes = std::max(0, (available + 1) / 3);
+        const std::string hex = toHex(payload, static_cast<std::size_t>(maxBytes));
+        const std::string line = prefix + hex;
+        mvwaddnstr(win, payloadLabelY, 2, line.c_str(), maxText);
+    }
+    int linesDrawn = 0;
     
-    for (std::size_t i = 0; i < payload.size() && (y - 6) < maxLines; i += bytesPerLine) {
+    for (std::size_t i = 0; i < payload.size() && linesDrawn < maxLines; i += bytesPerLine) {
         // Offset
         wattron(win, COLOR_PAIR(1));
         mvwprintw(win, y, 2, "%04zX", i);
@@ -389,7 +412,7 @@ void drawLastRxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastRxFram
         
         // Parte ASCII
         x = 7 + bytesPerLine * 3 + 2;
-        if (x + bytesPerLine < w - 2) {
+        if (x + bytesPerLine <= w - 2) {
             wattron(win, COLOR_PAIR(3));
             for (std::size_t j = 0; j < static_cast<std::size_t>(bytesPerLine) && (i + j) < payload.size(); ++j) {
                 std::uint8_t byte = payload[i + j];
@@ -400,10 +423,11 @@ void drawLastRxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastRxFram
         }
         
         y++;
+        linesDrawn++;
     }
     
     // Indicador si hay más datos
-    if (payload.size() > static_cast<std::size_t>(maxLines * bytesPerLine)) {
+    if (maxLines > 0 && payload.size() > static_cast<std::size_t>(maxLines * bytesPerLine)) {
         wattron(win, COLOR_PAIR(4));
         mvwprintw(win, y, 2, "... (%zu bytes mas)", 
                  payload.size() - (maxLines * bytesPerLine));
@@ -582,6 +606,7 @@ int runTuiApp(TapDevice& tap) {
     int logX = (txPanelWin != nullptr) ? sidePanelW : 0;
     WINDOW* logWin = newwin(logH, logW, headerH + breakdownH, logX);
     WINDOW* footerWin = newwin(footerH, termW, headerH + breakdownH + logH, 0);
+    WINDOW* sendMenuWin = nullptr;
 
     LogBuffer log;
     std::string status = "Inicializando";
@@ -620,8 +645,34 @@ int runTuiApp(TapDevice& tap) {
         ++tick;
         if (showInfo) {
             // Fullscreen info to avoid flicker from other panels
+            if (sendMenuWin) {
+                werase(sendMenuWin);
+                wrefresh(sendMenuWin);
+                delwin(sendMenuWin);
+                sendMenuWin = nullptr;
+            }
             drawInfo(stdscr, infoPage, tick, lastTxTick, lastRxTick);
+        } else if (showSendMenu) {
+            int const popupH = 7;
+            int const popupW = 32;
+            const int footerY = headerH + breakdownH + logH;
+            const int footerX = 2;
+            const int anchorX = footerX + 6; // encima de [m]
+            int popupX = std::min(std::max(0, anchorX), std::max(0, termW - popupW));
+            int popupY = std::min(std::max(0, footerY - popupH + 1), std::max(0, termH - popupH));
+
+            if (!sendMenuWin) {
+                sendMenuWin = newwin(popupH, popupW, popupY, popupX);
+            }
+            drawSendMenu(sendMenuWin, customPacket.has_value(), customPacket ? customPacket->size() : 0);
         } else {
+            if (sendMenuWin) {
+                werase(sendMenuWin);
+                wrefresh(sendMenuWin);
+                delwin(sendMenuWin);
+                sendMenuWin = nullptr;
+            }
+
             drawHeader(headerWin, tap.name(), status);
             drawLog(logWin, log, scrollOffset);
             if (txPanelWin) {
@@ -631,16 +682,6 @@ int runTuiApp(TapDevice& tap) {
                 drawLastRxPanel(rxPanelWin, lastRxFrame);
             }
             drawFooter(footerWin);
-
-            if (showSendMenu) {
-                int const popupH = 7;
-                int const popupW = 32;
-                int const popupY = (termH - popupH) / 2;
-                int const popupX = (termW - popupW) / 2;
-                WINDOW* sendMenuWin = newwin(popupH, popupW, popupY, popupX);
-                drawSendMenu(sendMenuWin, customPacket.has_value(), customPacket ? customPacket->size() : 0);
-                delwin(sendMenuWin);
-            }
         }
 
         struct pollfd pfd;
@@ -795,6 +836,9 @@ int runTuiApp(TapDevice& tap) {
         delwin(rxPanelWin);
     }
     // if (breakdownWin) delwin(breakdownWin); REMOVED
+    if (sendMenuWin) {
+        delwin(sendMenuWin);
+    }
     delwin(footerWin);
     delwin(logWin);
     delwin(headerWin);

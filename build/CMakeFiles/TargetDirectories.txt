@@ -1,3 +1,0 @@
-/home/m1-max/netGui-Tool/netGui-Tool/build/CMakeFiles/netGui.dir
-/home/m1-max/netGui-Tool/netGui-Tool/build/CMakeFiles/edit_cache.dir
-/home/m1-max/netGui-Tool/netGui-Tool/build/CMakeFiles/rebuild_cache.dir
