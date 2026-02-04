@@ -14,6 +14,9 @@ sudo ip link set dev tap0 up
 sudo ip addr add 10.0.0.1/24 dev tap0
 ```
 
+https://github.com/user-attachments/assets/baf50d88-643d-4d50-9b5d-80518e93a59f
+
+
 Controles de la TUI:
 
 - `s`: enviar demo con payload 0x00
@@ -35,4 +38,8 @@ Notas:
 - Con `x` puedes capturar paquetes RX reales y usarlos como plantilla custom.
 - Los demos `s` y `d` muestran el tamaño exacto en bytes enviados.
 
-
+-> **Pendiente**:
+  - Arreglar impresion de `/` y `*` erróneas en info.
+  - Agregar partes más allá de Ethernet y TAP, limpiar programa.
+  - Renombrar todo lo relacionado con `GUI` como `TUI` pues se realizó un cambio para simplificar.
+    
