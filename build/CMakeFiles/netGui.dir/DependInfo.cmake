@@ -8,11 +8,11 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/t480s/Documentos/netGui-Tool/src/ethernet.cpp" "CMakeFiles/netGui.dir/src/ethernet.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/ethernet.cpp.o.d"
-  "/home/t480s/Documentos/netGui-Tool/src/main.cpp" "CMakeFiles/netGui.dir/src/main.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/main.cpp.o.d"
-  "/home/t480s/Documentos/netGui-Tool/src/netgui_actions.cpp" "CMakeFiles/netGui.dir/src/netgui_actions.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/netgui_actions.cpp.o.d"
-  "/home/t480s/Documentos/netGui-Tool/src/tap.cpp" "CMakeFiles/netGui.dir/src/tap.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/tap.cpp.o.d"
-  "/home/t480s/Documentos/netGui-Tool/src/tui_app.cpp" "CMakeFiles/netGui.dir/src/tui_app.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/tui_app.cpp.o.d"
+  "/home/m1-max/netGui-Tool/netGui-Tool/src/ethernet.cpp" "CMakeFiles/netGui.dir/src/ethernet.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/ethernet.cpp.o.d"
+  "/home/m1-max/netGui-Tool/netGui-Tool/src/main.cpp" "CMakeFiles/netGui.dir/src/main.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/main.cpp.o.d"
+  "/home/m1-max/netGui-Tool/netGui-Tool/src/netgui_actions.cpp" "CMakeFiles/netGui.dir/src/netgui_actions.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/netgui_actions.cpp.o.d"
+  "/home/m1-max/netGui-Tool/netGui-Tool/src/tap.cpp" "CMakeFiles/netGui.dir/src/tap.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/tap.cpp.o.d"
+  "/home/m1-max/netGui-Tool/netGui-Tool/src/tui_app.cpp" "CMakeFiles/netGui.dir/src/tui_app.cpp.o" "gcc" "CMakeFiles/netGui.dir/src/tui_app.cpp.o.d"
   "" "netGui" "gcc" "CMakeFiles/netGui.dir/link.d"
   )
 

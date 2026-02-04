@@ -1,32 +1,32 @@
 [
 {
-  "directory": "/home/t480s/Documentos/netGui-Tool/build",
-  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/ethernet.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/ethernet.cpp",
-  "file": "/home/t480s/Documentos/netGui-Tool/src/ethernet.cpp",
-  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/ethernet.cpp.o"
+  "directory": "/home/m1-max/netGui-Tool/netGui-Tool/build",
+  "command": "/usr/bin/aarch64-linux-gnu-g++  -I/home/m1-max/netGui-Tool/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/ethernet.cpp.o -c /home/m1-max/netGui-Tool/netGui-Tool/src/ethernet.cpp",
+  "file": "/home/m1-max/netGui-Tool/netGui-Tool/src/ethernet.cpp",
+  "output": "CMakeFiles/netGui.dir/src/ethernet.cpp.o"
 },
 {
-  "directory": "/home/t480s/Documentos/netGui-Tool/build",
-  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/main.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/main.cpp",
-  "file": "/home/t480s/Documentos/netGui-Tool/src/main.cpp",
-  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/main.cpp.o"
+  "directory": "/home/m1-max/netGui-Tool/netGui-Tool/build",
+  "command": "/usr/bin/aarch64-linux-gnu-g++  -I/home/m1-max/netGui-Tool/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/main.cpp.o -c /home/m1-max/netGui-Tool/netGui-Tool/src/main.cpp",
+  "file": "/home/m1-max/netGui-Tool/netGui-Tool/src/main.cpp",
+  "output": "CMakeFiles/netGui.dir/src/main.cpp.o"
 },
 {
-  "directory": "/home/t480s/Documentos/netGui-Tool/build",
-  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/netgui_actions.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/netgui_actions.cpp",
-  "file": "/home/t480s/Documentos/netGui-Tool/src/netgui_actions.cpp",
-  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/netgui_actions.cpp.o"
+  "directory": "/home/m1-max/netGui-Tool/netGui-Tool/build",
+  "command": "/usr/bin/aarch64-linux-gnu-g++  -I/home/m1-max/netGui-Tool/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/netgui_actions.cpp.o -c /home/m1-max/netGui-Tool/netGui-Tool/src/netgui_actions.cpp",
+  "file": "/home/m1-max/netGui-Tool/netGui-Tool/src/netgui_actions.cpp",
+  "output": "CMakeFiles/netGui.dir/src/netgui_actions.cpp.o"
 },
 {
-  "directory": "/home/t480s/Documentos/netGui-Tool/build",
-  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/tap.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/tap.cpp",
-  "file": "/home/t480s/Documentos/netGui-Tool/src/tap.cpp",
-  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/tap.cpp.o"
+  "directory": "/home/m1-max/netGui-Tool/netGui-Tool/build",
+  "command": "/usr/bin/aarch64-linux-gnu-g++  -I/home/m1-max/netGui-Tool/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/tap.cpp.o -c /home/m1-max/netGui-Tool/netGui-Tool/src/tap.cpp",
+  "file": "/home/m1-max/netGui-Tool/netGui-Tool/src/tap.cpp",
+  "output": "CMakeFiles/netGui.dir/src/tap.cpp.o"
 },
 {
-  "directory": "/home/t480s/Documentos/netGui-Tool/build",
-  "command": "/usr/bin/g++ -I/home/t480s/Documentos/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/tui_app.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/tui_app.cpp",
-  "file": "/home/t480s/Documentos/netGui-Tool/src/tui_app.cpp",
-  "output": "/home/t480s/Documentos/netGui-Tool/build/CMakeFiles/netGui.dir/src/tui_app.cpp.o"
+  "directory": "/home/m1-max/netGui-Tool/netGui-Tool/build",
+  "command": "/usr/bin/aarch64-linux-gnu-g++  -I/home/m1-max/netGui-Tool/netGui-Tool/include -g -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/tui_app.cpp.o -c /home/m1-max/netGui-Tool/netGui-Tool/src/tui_app.cpp",
+  "file": "/home/m1-max/netGui-Tool/netGui-Tool/src/tui_app.cpp",
+  "output": "CMakeFiles/netGui.dir/src/tui_app.cpp.o"
 }
 ]

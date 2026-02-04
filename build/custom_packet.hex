@@ -1,5 +1,6 @@
-# Custom Ethernet frame bytes (no FCS)
-# Format: hex bytes separated by spaces/newlines. Comments with # or //.
-# dst-mac (6)   src-mac (6)   ethertype (2)   payload (...)
-ff ff ff ff ff ff   02 00 00 00 00 01   88 b5
-42 00 50 00 00 00 00 00 00 00 00 00 00 00 00 00
+# Capturado desde RX
+# 2e:d3:6a:3e:b7:5f -> ff:ff:ff:ff:ff:ff type=0x0806 payload=28B
+ff ff ff ff ff ff 2e d3 6a 3e b7 5f 08 06 00 01 
+08 00 06 04 00 01 2e d3 6a 3e b7 5f c0 a8 8b 46 
+00 00 00 00 00 00 08 08 08 08 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 

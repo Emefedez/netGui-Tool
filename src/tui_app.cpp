@@ -27,19 +27,81 @@ struct LogBuffer {
 };
 
 void drawHeader(WINDOW* win, const std::string& iface, const std::string& status) {
+    int h, w;
+    getmaxyx(win, h, w);
+    (void)h;
     werase(win);
     box(win, 0, 0);
-    mvwprintw(win, 1, 2, "NetGui-Tool (TUI ncurses)");
-    mvwprintw(win, 2, 2, "Interfaz: %s", iface.c_str());
-    mvwprintw(win, 3, 2, "Estado: %s", status.c_str());
+    const int innerWidth = std::max(0, w - 2);
+    const int x = 2;
+    const int maxWidth = std::max(0, w - x - 1);
+
+    const std::string line1 = "NetGui-Tool (TUI) [RX:Verde TX:Rojo Warn:Amarillo]";
+    const std::string line2 = "Interfaz: " + iface + " | Estado: " + status;
+
+    if (innerWidth > 0) {
+        mvwaddnstr(win, 1, x, line1.c_str(), maxWidth);
+        mvwaddnstr(win, 2, x, line2.c_str(), maxWidth);
+    }
     wrefresh(win);
 }
 
 void drawFooter(WINDOW* win) {
+    int h, w;
+    getmaxyx(win, h, w);
+    (void)h;
     werase(win);
     box(win, 0, 0);
-    mvwprintw(win, 1, 2, "[s] Demo(0x00)  [d] Demo(0xFF)  [t] Demo RX  [c] Enviar custom  [e] Editar custom");
-    mvwprintw(win, 2, 2, "[r] Recargar  [x] Guardar RX  [b] Toggle TX/RX  [i] Info  [q] Salir  [Up/Down] Scroll");
+    const int x = 2;
+    int maxWidth = std::max(0, w - x - 1);
+    
+    // Modern simplified menu
+    if (maxWidth > 0) {
+        wattron(win, COLOR_PAIR(6)); // Highlight for groupings
+        mvwaddnstr(win, 1, x, "SEND:", 5);
+        wattroff(win, COLOR_PAIR(6));
+        
+        std::string line1 = " [m]Menu";
+        mvwaddnstr(win, 1, x + 5, line1.c_str(), maxWidth - 5);
+
+        wattron(win, COLOR_PAIR(6));
+        mvwaddnstr(win, 1, x + 35, "EDIT:", 5);
+        wattroff(win, COLOR_PAIR(6));
+        
+        std::string line1b = " [e]Edit [r]Reload [x]SaveRX";
+        mvwaddnstr(win, 1, x + 40, line1b.c_str(), maxWidth - 40);
+
+        wattron(win, COLOR_PAIR(6)); // Highlight
+        mvwaddnstr(win, 2, x, "SYS:", 4);
+        wattroff(win, COLOR_PAIR(6));
+        
+        std::string line2 = " [t]DemoRX [i]Info [q]Quit [Arrows]Log Scroll";
+        mvwaddnstr(win, 2, x + 4, line2.c_str(), maxWidth - 4);
+    }
+    wrefresh(win);
+}
+
+void drawSendMenu(WINDOW* win, bool customLoaded, std::size_t customSize) {
+    int h, w;
+    getmaxyx(win, h, w);
+    (void)h;
+    werase(win);
+    box(win, 0, 0);
+
+    wattron(win, COLOR_PAIR(6));
+    mvwaddnstr(win, 0, 2, " Send Menu ", w - 4);
+    wattroff(win, COLOR_PAIR(6));
+
+    mvwaddnstr(win, 1, 2, "[s] Demo A (0x00)", w - 4);
+    mvwaddnstr(win, 2, 2, "[d] Demo B (0xFF)", w - 4);
+    mvwaddnstr(win, 3, 2, "[c] Enviar Custom", w - 4);
+    if (customLoaded) {
+        std::string customLine = "Custom: cargado (" + std::to_string(customSize) + " bytes)";
+        mvwaddnstr(win, 4, 2, customLine.c_str(), w - 4);
+    } else {
+        mvwaddnstr(win, 4, 2, "Custom: NO cargado (usa [r] Recargar)", w - 4);
+    }
+    mvwaddnstr(win, 6, 2, "[m] Cerrar", w - 4);
     wrefresh(win);
 }
 
@@ -70,40 +132,91 @@ void drawScrollBar(WINDOW* win, int totalLines, int maxLines, int scrollOffset) 
     mvwaddch(win, knobPos, w - 2, ACS_DIAMOND);
 }
 
-void drawLogLine(WINDOW* win, int y, int x, int maxWidth, const std::string& line) {
-    auto addSegment = [&](const std::string& text, int colorPair) {
-        if (maxWidth <= 0 || text.empty()) return;
-        if (colorPair > 0) wattron(win, COLOR_PAIR(colorPair));
-        const int n = std::min(static_cast<int>(text.size()), maxWidth);
-        waddnstr(win, text.c_str(), n);
-        maxWidth -= n;
-        if (colorPair > 0) wattroff(win, COLOR_PAIR(colorPair));
-    };
+struct WrappedLine {
+    std::string text;
+    int colorPair = 0;
+};
 
-    wmove(win, y, x);
+std::vector<std::string> wrapText(const std::string& text, int width) {
+    std::vector<std::string> lines;
+    if (width <= 0) return lines;
 
-    std::string tag;
-    int tagColor = 0;
-    if (line.rfind("[RX]", 0) == 0) { tag = "[RX]"; tagColor = 1; }
-    else if (line.rfind("[TX]", 0) == 0) { tag = "[TX]"; tagColor = 2; }
-    else if (line.rfind("[INFO]", 0) == 0) { tag = "[INFO]"; tagColor = 3; }
-    else if (line.rfind("[WARN]", 0) == 0) { tag = "[WARN]"; tagColor = 4; }
+    std::size_t pos = 0;
+    while (pos < text.size()) {
+        while (pos < text.size() && text[pos] == ' ') {
+            ++pos;
+        }
+        if (pos >= text.size()) break;
 
-    std::string body = line;
-    if (!tag.empty()) {
-        addSegment(tag, tagColor);
-        body = line.substr(tag.size());
+        std::size_t lineStart = pos;
+        std::size_t lineEnd = pos;
+        std::size_t lastSpace = std::string::npos;
+        int remaining = width;
+
+        while (lineEnd < text.size() && remaining > 0) {
+            if (text[lineEnd] == ' ') {
+                lastSpace = lineEnd;
+            }
+            ++lineEnd;
+            --remaining;
+        }
+
+        if (lineEnd >= text.size()) {
+            lines.push_back(text.substr(lineStart));
+            break;
+        }
+
+        if (lastSpace != std::string::npos && lastSpace > lineStart) {
+            lines.push_back(text.substr(lineStart, lastSpace - lineStart));
+            pos = lastSpace + 1;
+        } else {
+            lines.push_back(text.substr(lineStart, width));
+            pos = lineStart + width;
+        }
     }
 
-    const std::string protoKey = " proto=";
-    const std::size_t protoPos = body.find(protoKey);
-    if (protoPos != std::string::npos) {
-        addSegment(body.substr(0, protoPos), 0);
-        addSegment(protoKey, 0);
-        addSegment(body.substr(protoPos + protoKey.size()), 3);
-    } else {
-        addSegment(body, 0);
+    return lines;
+}
+
+std::vector<WrappedLine> buildWrappedLog(const LogBuffer& log, int maxWidth) {
+    std::vector<WrappedLine> out;
+    for (const auto& line : log.lines) {
+        std::string tag;
+        int tagColor = 0;
+        if (line.rfind("[RX]", 0) == 0) { tag = "[RX]"; tagColor = 1; }
+        else if (line.rfind("[TX]", 0) == 0) { tag = "[TX]"; tagColor = 2; }
+        else if (line.rfind("[INFO]", 0) == 0) { tag = "[INFO]"; tagColor = 3; }
+        else if (line.rfind("[WARN]", 0) == 0) { tag = "[WARN]"; tagColor = 4; }
+
+        int colorPair = (tagColor > 0) ? tagColor : 5;
+        std::string body = line;
+        std::string prefix;
+        if (!tag.empty()) {
+            body = line.substr(tag.size());
+            if (!body.empty() && body[0] == ' ') body.erase(0, 1);
+            prefix = tag + " ";
+        }
+
+        const int prefixLen = static_cast<int>(prefix.size());
+        const int bodyWidth = std::max(0, maxWidth - prefixLen);
+        auto wrapped = wrapText(body, bodyWidth);
+        if (wrapped.empty()) wrapped.push_back(" ");
+
+        for (std::size_t i = 0; i < wrapped.size(); ++i) {
+            std::string lineText;
+            if (!prefix.empty()) {
+                if (i == 0) {
+                    lineText = prefix + wrapped[i];
+                } else {
+                    lineText = std::string(prefixLen, ' ') + wrapped[i];
+                }
+            } else {
+                lineText = wrapped[i];
+            }
+            out.push_back({lineText, colorPair});
+        }
     }
+    return out;
 }
 
 void drawLog(WINDOW* win, const LogBuffer& log, int scrollOffset) {
@@ -112,15 +225,20 @@ void drawLog(WINDOW* win, const LogBuffer& log, int scrollOffset) {
     int h, w;
     getmaxyx(win, h, w);
     const int maxLines = h - 2;
+    const int maxWidth = std::max(0, w - 4);
+    auto wrapped = buildWrappedLog(log, maxWidth);
     int start = 0;
-    const int total = static_cast<int>(log.lines.size());
+    const int total = static_cast<int>(wrapped.size());
     const int maxStart = (total > maxLines) ? (total - maxLines) : 0;
     if (scrollOffset > maxStart) scrollOffset = maxStart;
     if (scrollOffset < 0) scrollOffset = 0;
     start = maxStart - scrollOffset;
-    for (int i = 0; i < maxLines && (start + i) < static_cast<int>(log.lines.size()); ++i) {
-        const std::string& line = log.lines[start + i];
-        drawLogLine(win, 1 + i, 2, w - 5, line);
+    for (int i = 0; i < maxLines && (start + i) < total; ++i) {
+        const auto& line = wrapped[start + i];
+        wmove(win, 1 + i, 2);
+        if (line.colorPair > 0) wattron(win, COLOR_PAIR(line.colorPair));
+        mvwaddnstr(win, 1 + i, 2, line.text.c_str(), maxWidth);
+        if (line.colorPair > 0) wattroff(win, COLOR_PAIR(line.colorPair));
     }
     drawScrollBar(win, total, maxLines, scrollOffset);
     wrefresh(win);
@@ -161,29 +279,35 @@ void drawLastTxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastTxFram
     getmaxyx(win, h, w);
     
     // Información de cabecera
-    wattron(win, COLOR_PAIR(3));
+    wattron(win, COLOR_PAIR(2));
     mvwprintw(win, y++, 2, "Dst: %s", macToString(lastTxFrame->dst).c_str());
     mvwprintw(win, y++, 2, "Src: %s", macToString(lastTxFrame->src).c_str());
     mvwprintw(win, y++, 2, "Tipo: 0x%04X (%s)", lastTxFrame->etherType, etherTypeLabel(lastTxFrame->etherType).c_str());
-    wattroff(win, COLOR_PAIR(3));
+    wattroff(win, COLOR_PAIR(2));
     y++;
     
     // Payload en hex + ASCII
     mvwprintw(win, y++, 2, "Payload (%zu bytes):", lastTxFrame->payload.size());
     const auto& payload = lastTxFrame->payload;
-    const int bytesPerLine = 16;
+    // Calculate dynamic bytes per line: Width = 11 + 4*N
+    int bytesPerLine = (w - 11) / 4;
+    if (bytesPerLine < 4) bytesPerLine = 4;
+    if (bytesPerLine > 16) bytesPerLine = 16;
+
     const int maxLines = h - y - 2; // Espacio disponible
     
     for (std::size_t i = 0; i < payload.size() && (y - 6) < maxLines; i += bytesPerLine) {
         // Offset
-        wattron(win, COLOR_PAIR(4));
+        wattron(win, COLOR_PAIR(2));
         mvwprintw(win, y, 2, "%04zX", i);
-        wattroff(win, COLOR_PAIR(4));
+        wattroff(win, COLOR_PAIR(2));
         
         // Hex bytes
         int x = 7;
-        for (std::size_t j = 0; j < bytesPerLine && (i + j) < payload.size(); ++j) {
+        for (std::size_t j = 0; j < static_cast<std::size_t>(bytesPerLine) && (i + j) < payload.size(); ++j) {
+            wattron(win, COLOR_PAIR(2));
             mvwprintw(win, y, x, "%02X", payload[i + j]);
+            wattroff(win, COLOR_PAIR(2));
             x += 3;
         }
         
@@ -191,7 +315,7 @@ void drawLastTxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastTxFram
         x = 7 + bytesPerLine * 3 + 2;
         if (x + bytesPerLine < w - 2) {
             wattron(win, COLOR_PAIR(3));
-            for (std::size_t j = 0; j < bytesPerLine && (i + j) < payload.size(); ++j) {
+            for (std::size_t j = 0; j < static_cast<std::size_t>(bytesPerLine) && (i + j) < payload.size(); ++j) {
                 std::uint8_t byte = payload[i + j];
                 char ch = (byte >= 32 && byte <= 126) ? static_cast<char>(byte) : '.';
                 mvwaddch(win, y, x + j, ch);
@@ -231,29 +355,35 @@ void drawLastRxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastRxFram
     getmaxyx(win, h, w);
     
     // Información de cabecera
-    wattron(win, COLOR_PAIR(3));
+    wattron(win, COLOR_PAIR(1));
     mvwprintw(win, y++, 2, "Dst: %s", macToString(lastRxFrame->dst).c_str());
     mvwprintw(win, y++, 2, "Src: %s", macToString(lastRxFrame->src).c_str());
     mvwprintw(win, y++, 2, "Tipo: 0x%04X (%s)", lastRxFrame->etherType, etherTypeLabel(lastRxFrame->etherType).c_str());
-    wattroff(win, COLOR_PAIR(3));
+    wattroff(win, COLOR_PAIR(1));
     y++;
     
     // Payload en hex + ASCII
     mvwprintw(win, y++, 2, "Payload (%zu bytes):", lastRxFrame->payload.size());
     const auto& payload = lastRxFrame->payload;
-    const int bytesPerLine = 16;
+    // Calculate dynamic bytes per line: Width = 11 + 4*N
+    int bytesPerLine = (w - 11) / 4;
+    if (bytesPerLine < 4) bytesPerLine = 4;
+    if (bytesPerLine > 16) bytesPerLine = 16;
+    
     const int maxLines = h - y - 2; // Espacio disponible
     
     for (std::size_t i = 0; i < payload.size() && (y - 6) < maxLines; i += bytesPerLine) {
         // Offset
-        wattron(win, COLOR_PAIR(4));
+        wattron(win, COLOR_PAIR(1));
         mvwprintw(win, y, 2, "%04zX", i);
-        wattroff(win, COLOR_PAIR(4));
+        wattroff(win, COLOR_PAIR(1));
         
         // Hex bytes
         int x = 7;
-        for (std::size_t j = 0; j < bytesPerLine && (i + j) < payload.size(); ++j) {
+        for (std::size_t j = 0; j < static_cast<std::size_t>(bytesPerLine) && (i + j) < payload.size(); ++j) {
+            wattron(win, COLOR_PAIR(1));
             mvwprintw(win, y, x, "%02X", payload[i + j]);
+            wattroff(win, COLOR_PAIR(1));
             x += 3;
         }
         
@@ -261,7 +391,7 @@ void drawLastRxPanel(WINDOW* win, const std::optional<EthernetFrame>& lastRxFram
         x = 7 + bytesPerLine * 3 + 2;
         if (x + bytesPerLine < w - 2) {
             wattron(win, COLOR_PAIR(3));
-            for (std::size_t j = 0; j < bytesPerLine && (i + j) < payload.size(); ++j) {
+            for (std::size_t j = 0; j < static_cast<std::size_t>(bytesPerLine) && (i + j) < payload.size(); ++j) {
                 std::uint8_t byte = payload[i + j];
                 char ch = (byte >= 32 && byte <= 126) ? static_cast<char>(byte) : '.';
                 mvwaddch(win, y, x + j, ch);
@@ -391,9 +521,16 @@ void drawInfo(WINDOW* win, int infoPage = 0) {
         mvwprintw(win, 10, 2, "  -> Tu programa los LEE como sniffing del trafico saliente.");
         mvwprintw(win, 11, 2, "  -> Uso: Capturar trafico generado por el SO (ej: ping, curl).");
         mvwprintw(win, 13, 2, "TAP: Interfaz virtual que simula un cable Ethernet de capa 2.");
-        mvwprintw(win, 15, 2, "Trama Ethernet: MAC dst (6B) + MAC src (6B) + EtherType (2B) + Payload");
-        mvwprintw(win, 16, 2, "EtherType: 0x0800=IPv4, 0x0806=ARP, 0x86DD=IPv6, 0x88B5=Demo.");
-        mvwprintw(win, 18, 2, "Controles: [i] Info  [-] Pagina anterior  [+] Siguiente  [q] Salir");
+        mvwprintw(win, 14, 2, "Trama Ethernet: MAC dst (6B) + MAC src (6B) + EtherType (2B) + Payload");
+        // mvwprintw(win, 16, 2, "EtherType: 0x0800=IPv4, 0x0806=ARP, 0x86DD=IPv6, 0x88B5=Demo.");
+        
+        mvwprintw(win, 16, 2, "Ejemplos de prueba (Terminal):");
+        wattron(win, COLOR_PAIR(4));
+        mvwprintw(win, 17, 2, "  ping -I tap_user 8.8.8.8   (Genera RX)");
+        mvwprintw(win, 18, 2, "  tcpdump -i tap_user -n     (Verifica TX/RX)");
+        wattroff(win, COLOR_PAIR(4));
+
+        mvwprintw(win, 20, 2, "Controles: [i] Info  [-] Pagina anterior  [+] Siguiente  [q] Salir");
     } else if (infoPage == 1) {
         mvwprintw(win, 1, 2, "Info - Editar Paquetes Custom (2/3)");
         mvwprintw(win, 3, 2, "Archivo: custom_packet.hex (editar con [e])");
@@ -433,47 +570,48 @@ int runTuiApp(TapDevice& tap) {
         start_color();
         init_pair(1, COLOR_GREEN, COLOR_BLACK); // RX
         init_pair(2, COLOR_RED, COLOR_BLACK);   // TX
-        init_pair(3, COLOR_CYAN, COLOR_BLACK);  // INFO
-        init_pair(4, COLOR_YELLOW, COLOR_BLACK);// WARN
+        init_pair(3, COLOR_CYAN, COLOR_BLACK);  // INFO/ASCII
+        init_pair(4, COLOR_YELLOW, COLOR_BLACK);// WARN/Labels
+        init_pair(5, COLOR_WHITE, COLOR_BLACK); // Normal
+        init_pair(6, COLOR_BLUE, COLOR_BLACK);  // Offsets/Menu
     }
 
     int termH, termW;
     getmaxyx(stdscr, termH, termW);
-    int headerH = 5;
+    int headerH = 4;
     int footerH = 4;
     
-    // Crear panel de desglose debajo del header si hay espacio
+    // No top breakdown panel
     int breakdownH = 0;
-    WINDOW* breakdownWin = nullptr;
-    if (termH > 30) {  // Solo si hay suficiente altura
-        breakdownH = 10;  // Reducido para dar más espacio al log
-    }
     
     int logH = termH - headerH - footerH - breakdownH;
     if (logH < 4) logH = 4;
 
-    // Crear paneles laterales para TX/RX si hay espacio suficiente
+    // Crear paneles laterales para TX/RX
+    // Ahora son más grandes al no haber breakdown panel
     int sidePanelW = 0;
     int logW = termW;
     WINDOW* txPanelWin = nullptr;
     WINDOW* rxPanelWin = nullptr;
     
-    if (termW > 160) {  // Espacio para ambos paneles (más restrictivo)
-        sidePanelW = 48;  // Más pequeño
-        logW = termW - (sidePanelW * 2) - 2;
+    if (termW > 140) {  // Espacio para ambos paneles
+        sidePanelW = (int)(termW * 0.30); 
+        if (sidePanelW < 40) sidePanelW = 40;
+        
+        logW = termW - (sidePanelW * 2);
         txPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, 0);
         rxPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, termW - sidePanelW);
-    } else if (termW > 110) {  // Espacio solo para panel RX
-        sidePanelW = 48;  // Más pequeño
-        logW = termW - sidePanelW - 1;
-        rxPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, logW + 1);
+    } else if (termW > 90) {  // Espacio solo para panel RX (prioridad sniffing)
+        sidePanelW = (int)(termW * 0.40);
+        
+        logW = termW - sidePanelW;
+        rxPanelWin = newwin(logH, sidePanelW, headerH + breakdownH, logW);
     }
+    // else: solo log
 
     WINDOW* headerWin = newwin(headerH, termW, 0, 0);
-    if (breakdownH > 0) {
-        breakdownWin = newwin(breakdownH, termW, headerH, 0);
-    }
-    int logX = (txPanelWin != nullptr) ? sidePanelW + 1 : 0;
+    // breakdownWin removed
+    int logX = (txPanelWin != nullptr) ? sidePanelW : 0;
     WINDOW* logWin = newwin(logH, logW, headerH + breakdownH, logX);
     WINDOW* footerWin = newwin(footerH, termW, headerH + breakdownH + logH, 0);
 
@@ -506,24 +644,32 @@ int runTuiApp(TapDevice& tap) {
     int scrollOffset = 0;
     std::optional<EthernetFrame> lastRxFrame;
     std::optional<EthernetFrame> lastTxFrame;
-    bool showTxBreakdown = true;  // Por defecto mostrar TX en desglose
+    bool showSendMenu = false;
     while (running) {
-        drawHeader(headerWin, tap.name(), status);
-        if (breakdownWin) {
-            drawFrameBreakdown(breakdownWin, showTxBreakdown ? lastTxFrame : lastRxFrame, showTxBreakdown);
-        }
         if (showInfo) {
-            drawInfo(logWin, infoPage);
+            // Fullscreen info to avoid flicker from other panels
+            drawInfo(stdscr, infoPage);
         } else {
+            drawHeader(headerWin, tap.name(), status);
             drawLog(logWin, log, scrollOffset);
+            if (txPanelWin) {
+                drawLastTxPanel(txPanelWin, lastTxFrame);
+            }
+            if (rxPanelWin) {
+                drawLastRxPanel(rxPanelWin, lastRxFrame);
+            }
+            drawFooter(footerWin);
+
+            if (showSendMenu) {
+                int const popupH = 7;
+                int const popupW = 32;
+                int const popupY = (termH - popupH) / 2;
+                int const popupX = (termW - popupW) / 2;
+                WINDOW* sendMenuWin = newwin(popupH, popupW, popupY, popupX);
+                drawSendMenu(sendMenuWin, customPacket.has_value(), customPacket ? customPacket->size() : 0);
+                delwin(sendMenuWin);
+            }
         }
-        if (txPanelWin) {
-            drawLastTxPanel(txPanelWin, lastTxFrame);
-        }
-        if (rxPanelWin) {
-            drawLastRxPanel(rxPanelWin, lastRxFrame);
-        }
-        drawFooter(footerWin);
 
         struct pollfd pfd;
         pfd.fd = tap.getFd();
@@ -537,27 +683,32 @@ int runTuiApp(TapDevice& tap) {
                 running = false;
             } else if (ch == 'i' || ch == 'I') {
                 showInfo = !showInfo;
+                if (showInfo) showSendMenu = false;
                 infoPage = 0;
             } else if (ch == '-' && showInfo) {
                 infoPage = (infoPage - 1 + 3) % 3;
             } else if (ch == '+' && showInfo) {
                 infoPage = (infoPage + 1) % 3;
-            } else if (ch == 's' || ch == 'S') {
+            } else if (ch == 'm' || ch == 'M') {
+                if (!showInfo) {
+                    showSendMenu = !showSendMenu;
+                }
+            } else if ((ch == 's' || ch == 'S') && showSendMenu) {
                 auto frame = makeDefaultDemoFrame(0);
                 lastTxFrame = frame;
-                showTxBreakdown = true;
                 auto bytes = serializeEthernetII(frame);
                 int sent = tap.write(bytes.data(), bytes.size());
                 status = txResult(sent);
                 log.push("[TX] Demo 0x00 (" + std::to_string(bytes.size()) + "B) -> " + status);
-            } else if (ch == 'd' || ch == 'D') {
+                showSendMenu = false;
+            } else if ((ch == 'd' || ch == 'D') && showSendMenu) {
                 auto frame = makeDefaultDemoFrame(1);
                 lastTxFrame = frame;
-                showTxBreakdown = true;
                 auto bytes = serializeEthernetII(frame);
                 int sent = tap.write(bytes.data(), bytes.size());
                 status = txResult(sent);
                 log.push("[TX] Demo 0xFF (" + std::to_string(bytes.size()) + "B) -> " + status);
+                showSendMenu = false;
             } else if (ch == 'e' || ch == 'E') {
                 endwin();
                 openFileInEditor(packetFile, msg);
@@ -573,6 +724,8 @@ int runTuiApp(TapDevice& tap) {
                     init_pair(2, COLOR_RED, COLOR_BLACK);
                     init_pair(3, COLOR_CYAN, COLOR_BLACK);
                     init_pair(4, COLOR_YELLOW, COLOR_BLACK);
+                    init_pair(5, COLOR_WHITE, COLOR_BLACK);
+                    init_pair(6, COLOR_BLUE, COLOR_BLACK);
                 }
                 log.push(msg);
                 customPacket = loadCustomPacket(packetFile);
@@ -590,7 +743,7 @@ int runTuiApp(TapDevice& tap) {
                     status = "Custom inválido";
                     log.push("[WARN] [CUSTOM] Error de parseo");
                 }
-            } else if (ch == 'c' || ch == 'C') {
+            } else if ((ch == 'c' || ch == 'C') && showSendMenu) {
                 if (!customPacket) {
                     status = "Custom no cargado";
                     log.push("[WARN] [TX] Custom falló: no hay bytes");
@@ -599,12 +752,12 @@ int runTuiApp(TapDevice& tap) {
                     auto customFrameOpt = parseEthernetII(customPacket->data(), customPacket->size());
                     if (customFrameOpt) {
                         lastTxFrame = customFrameOpt;
-                        showTxBreakdown = true;
                     }
                     int sent = tap.write(customPacket->data(), customPacket->size());
                     status = txResult(sent);
                     log.push("[TX] Custom -> " + status);
                 }
+                showSendMenu = false;
             } else if (ch == 'x' || ch == 'X') {
                 if (!lastRxFrame) {
                     log.push("[WARN] [RX] No hay paquete RX capturado para guardar");
@@ -630,17 +783,14 @@ int runTuiApp(TapDevice& tap) {
                 const std::string typeLabel = etherTypeLabel(demoFrame.etherType);
                 log.push("[RX] Demo simulado: " + describeEthernetII(demoFrame) + " proto=" + typeLabel);
                 status = "RX Demo simulado (como si fuera del kernel)";
-            } else if (ch == 'b' || ch == 'B') {
-                showTxBreakdown = !showTxBreakdown;
-                status = showTxBreakdown ? "Mostrando desglose TX" : "Mostrando desglose RX";
             } else if (ch == KEY_UP) {
-                scrollOffset -= 1;
+                scrollOffset += 1; // Scroll up (back in history)
             } else if (ch == KEY_DOWN) {
-                scrollOffset += 1;
+                scrollOffset -= 1; // Scroll down (forward to recent)
             } else if (ch == KEY_PPAGE) {
-                scrollOffset -= 5;
-            } else if (ch == KEY_NPAGE) {
                 scrollOffset += 5;
+            } else if (ch == KEY_NPAGE) {
+                scrollOffset -= 5;
             }
         }
 
@@ -667,9 +817,7 @@ int runTuiApp(TapDevice& tap) {
     if (rxPanelWin) {
         delwin(rxPanelWin);
     }
-    if (breakdownWin) {
-        delwin(breakdownWin);
-    }
+    // if (breakdownWin) delwin(breakdownWin); REMOVED
     delwin(footerWin);
     delwin(logWin);
     delwin(headerWin);

@@ -50,11 +50,6 @@
 			}
 		]
 	},
-	"codemodelVersion" : 
-	{
-		"major" : 2,
-		"minor" : 9
-	},
 	"compileGroups" : 
 	[
 		{
@@ -76,7 +71,7 @@
 			[
 				{
 					"backtrace" : 4,
-					"path" : "/home/t480s/Documentos/netGui-Tool/include"
+					"path" : "/home/m1-max/netGui-Tool/netGui-Tool/include"
 				}
 			],
 			"language" : "CXX",
@@ -108,11 +103,16 @@
 				"role" : "flags"
 			},
 			{
+				"fragment" : "",
+				"role" : "flags"
+			},
+			{
 				"fragment" : "-lcurses",
 				"role" : "libraries"
 			},
 			{
-				"fragment" : "-lform",
+				"backtrace" : 2,
+				"fragment" : "/usr/lib/aarch64-linux-gnu/libform.so",
 				"role" : "libraries"
 			},
 			{
@@ -133,29 +133,6 @@
 		],
 		"language" : "CXX"
 	},
-	"linkLibraries" : 
-	[
-		{
-			"backtrace" : 2,
-			"fragment" : "/usr/lib/libcurses.so"
-		},
-		{
-			"backtrace" : 2,
-			"fragment" : "/usr/lib/libform.so"
-		},
-		{
-			"backtrace" : 2,
-			"fragment" : "pthread"
-		},
-		{
-			"backtrace" : 2,
-			"fragment" : "dl"
-		},
-		{
-			"backtrace" : 2,
-			"fragment" : "m"
-		}
-	],
 	"name" : "netGui",
 	"nameOnDisk" : "netGui",
 	"paths" : 
