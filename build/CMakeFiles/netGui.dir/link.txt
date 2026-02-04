@@ -1,0 +1,1 @@
+/usr/bin/aarch64-linux-gnu-g++ CMakeFiles/netGui.dir/src/ethernet.cpp.o CMakeFiles/netGui.dir/src/main.cpp.o CMakeFiles/netGui.dir/src/netgui_actions.cpp.o CMakeFiles/netGui.dir/src/netgui_gui.cpp.o CMakeFiles/netGui.dir/src/rgl_layout.cpp.o CMakeFiles/netGui.dir/src/tap.cpp.o -o netGui  /usr/lib/libraylib.so -lpthread -ldl -lm 

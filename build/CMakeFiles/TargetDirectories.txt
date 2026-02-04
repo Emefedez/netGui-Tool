@@ -1,0 +1,3 @@
+/home/parallels/Documents/tcp_stack/build/CMakeFiles/netGui.dir
+/home/parallels/Documents/tcp_stack/build/CMakeFiles/edit_cache.dir
+/home/parallels/Documents/tcp_stack/build/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,14 @@
+#
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+#
+# Number of controls:     3
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 40 -1 -1
+a 001 anchor01 312 72 1
+c 000 0 WindowBox000 312 92 600 100 0 Ethernet/TAP Functions
+c 001 5 Button001 336 112 312 25 0 SEND PACKAGE
+c 002 5 Button002 336 145 312 25 0 MODIFY PACKAGE (OPEN DEFAULT TEXT EDITOR)
