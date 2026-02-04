@@ -13,11 +13,12 @@ sudo ip tuntap add dev tap0 mode tap
 sudo ip link set dev tap0 up
 sudo ip addr add 10.0.0.1/24 dev tap0
 ```
+**Video Demo:**
+https://github.com/user-attachments/assets/4d9e3035-72be-4305-861d-157fe1b0d9d5
 
 
-https://github.com/user-attachments/assets/67890a9b-0904-47d5-82ca-c835c915dbdc
-
-
+**Info Screen:**
+<img width="1024" height="7020" alt="imagen" src="https://github.com/user-attachments/assets/18037c2f-bfb6-438e-87f7-b7d9058aa02e" />
 
 
 Controles de la TUI:
