@@ -34,29 +34,55 @@ static bool isHexDigit(char c)
 /**
  * @brief Parse a MAC address from a string.
  */
+/**
+ * @brief Parse a MAC address from a string (supports "aa:bb:cc:dd:ee:ff" or "aabbccddeeff").
+ */
 std::optional<MacAddress> parseMac(std::string_view text)
 {
+    // Convert to string and remove all whitespace
     std::string s(text);
-    // Strip whitespace
     s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char ch) { return std::isspace(ch) != 0; }), s.end());
 
     MacAddress mac{};
 
     if (s.size() == 17)
     {
-        // aa:bb:cc:dd:ee:ff
+        // Parse colon-separated format: aa:bb:cc:dd:ee:ff
         int outIndex = 0;
         for (std::size_t i = 0; i < s.size();)
         {
+
+            /*        
+            Looking at the colon-separated MAC address parsing (the 17-character format `aa:bb:cc:dd:ee:ff`):
+
+            - **`6`** – A MAC address has exactly 6 bytes (12/6 = 2 hex digits per byte)
+            - **`17`** – The string length: 6 bytes × 2 hex digits + 5 colons = `12 + 5 = 17` characters
+            - **`2`** – Each byte is represented by 2 hexadecimal digits
+            - **`12`** – The continuous format (no colons): 6 bytes × 2 hex digits = 12 characters
+
+            The validation checks ensure:
+            1. `outIndex >= 6` – Prevents writing beyond the 6-byte MAC address array
+            2. `i + 1 >= s.size()` – Ensures at least 2 characters remain to read (current hex digit + next hex digit)
+            3. `isHexDigit()` calls – Validates both characters are valid hexadecimal (0-9, a-f, A-F)
+
+            These are standard constraints for parsing a 48-bit MAC address (6 octets).
+            */
+            // Ensure we don't write past 6 bytes
             if (outIndex >= 6) return std::nullopt;
+            // Ensure at least 2 hex digits remain
             if (i + 1 >= s.size()) return std::nullopt;
+            // Validate both characters are hex digits
             if (!isHexDigit(s[i]) || !isHexDigit(s[i + 1])) return std::nullopt;
+            
+            // Convert 2-character hex string to a byte value
             unsigned int byte = 0;
             std::stringstream ss;
             ss << std::hex << s.substr(i, 2);
             ss >> byte;
             mac[outIndex++] = static_cast<std::uint8_t>(byte & 0xFFu);
             i += 2;
+            
+            // Expect a colon separator between pairs (except after the last pair)
             if (i < s.size())
             {
                 if (s[i] != ':') return std::nullopt;
@@ -68,12 +94,16 @@ std::optional<MacAddress> parseMac(std::string_view text)
 
     if (s.size() == 12)
     {
-        // aabbccddeeff
+        // Parse continuous hex format: aabbccddeeff (no separators)
         for (int outIndex = 0; outIndex < 6; outIndex++)
         {
+            // Extract two hex digits for each byte
             const char h0 = s[outIndex * 2 + 0];
             const char h1 = s[outIndex * 2 + 1];
+            // Validate both are hex digits
             if (!isHexDigit(h0) || !isHexDigit(h1)) return std::nullopt;
+            
+            // Convert 2-character hex pair to a byte value
             unsigned int byte = 0;
             std::stringstream ss;
             ss << std::hex << s.substr(outIndex * 2, 2);
@@ -83,6 +113,7 @@ std::optional<MacAddress> parseMac(std::string_view text)
         return mac;
     }
 
+    // Unsupported format (wrong length)
     return std::nullopt;
 }
 
