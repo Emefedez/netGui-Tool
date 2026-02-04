@@ -1,5 +1,6 @@
 #include "netgui_actions.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
@@ -72,39 +73,44 @@ bool ensureCustomPacketTemplate(const std::filesystem::path& packetFile, std::st
 
 void openFileInEditor(const std::filesystem::path& file, std::string& outMsg)
 {
-    // GUI opener first (best UX on desktop).
-    const char* sudoUser = std::getenv("SUDO_USER");
-    const char* display = std::getenv("DISPLAY");
-    const char* xauth = std::getenv("XAUTHORITY");
-    std::string cmd;
-    if (sudoUser && sudoUser[0] != '\0')
-    {
-        // When running as root, open as the original desktop user and preserve
-        // the GUI-related environment variables.
-        cmd = std::string("sudo -u ") + sudoUser + " -E";
-        if (display && display[0] != '\0') cmd += std::string(" DISPLAY=\"") + display + "\"";
-        if (xauth && xauth[0] != '\0') cmd += std::string(" XAUTHORITY=\"") + xauth + "\"";
-        cmd += " xdg-open \"" + file.string() + "\" >/dev/null 2>&1 &";
-    }
-    else
-    {
-        cmd = "xdg-open \"" + file.string() + "\" >/dev/null 2>&1 &";
-    }
-
-    if (std::system(cmd.c_str()) == 0)
-    {
-        outMsg = "Opened file: " + file.string();
-        return;
-    }
-
-    // Terminal editor fallback.
+    // Terminal editor, blocking until exit.
     const char* editor = std::getenv("VISUAL");
     if (!editor || editor[0] == '\0') editor = std::getenv("EDITOR");
     if (!editor || editor[0] == '\0') editor = "nano";
 
-    outMsg = std::string("WARN: xdg-open failed, falling back to ") + editor;
-    cmd = std::string(editor) + " \"" + file.string() + "\"";
-    (void)std::system(cmd.c_str());
+    std::string cmd = std::string(editor) + " \"" + file.string() + "\"";
+    int ret = std::system(cmd.c_str());
+    if (ret == 0) {
+        outMsg = "[INFO] Archivo editado: " + file.string();
+    } else {
+        outMsg = "[WARN] Error al editar con " + std::string(editor);
+    }
+}
+
+bool saveRxFrameAsCustom(const EthernetFrame& frame, const std::filesystem::path& packetFile, std::string& outMsg)
+{
+    auto bytes = serializeEthernetII(frame);
+    std::string hexLine;
+    for (std::size_t i = 0; i < bytes.size(); ++i) {
+        if (i > 0 && i % 16 == 0) hexLine += "\n";
+        char buf[4];
+        snprintf(buf, sizeof(buf), "%02x ", static_cast<unsigned>(bytes[i]));
+        hexLine += buf;
+    }
+    hexLine += "\n";
+
+    std::ofstream out(packetFile);
+    if (!out.is_open()) {
+        outMsg = "[WARN] No se pudo guardar custom: " + packetFile.string();
+        return false;
+    }
+    out << "# Capturado desde RX\n";
+    out << "# " << describeEthernetII(frame) << "\n";
+    out << hexLine;
+    out.close();
+
+    outMsg = "[INFO] RX guardado como custom " + std::to_string(bytes.size()) + " bytes";
+    return true;
 }
 
 std::optional<std::vector<std::uint8_t>> loadCustomPacket(const std::filesystem::path& packetFile)

@@ -24,13 +24,16 @@ EthernetFrame makeDefaultDemoFrame(int modeBit);
 bool ensureCustomPacketTemplate(const std::filesystem::path& packetFile, std::string& outMsg);
 
 /**
- * @brief Open a file in an editor.
+ * @brief Open a file in an editor and wait for it to close.
  *
- * Strategy:
- * - Try `xdg-open` (GUI) and if running under sudo, try as `$SUDO_USER`.
- * - Fallback to `$VISUAL`/`$EDITOR`/`nano` in the current terminal.
+ * Blocks until the editor exits. Uses $VISUAL/$EDITOR or defaults to nano.
  */
 void openFileInEditor(const std::filesystem::path& file, std::string& outMsg);
+
+/**
+ * @brief Save a received Ethernet frame to the custom packet file (as hex).
+ */
+bool saveRxFrameAsCustom(const EthernetFrame& frame, const std::filesystem::path& packetFile, std::string& outMsg);
 
 /**
  * @brief Try to parse raw bytes from the custom packet file.

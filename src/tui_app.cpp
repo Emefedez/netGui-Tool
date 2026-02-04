@@ -11,6 +11,7 @@
 #include <system_error>
 #include <string>
 #include <vector>
+#include <optional>
 
 namespace {
 struct LogBuffer {
@@ -37,8 +38,8 @@ void drawHeader(WINDOW* win, const std::string& iface, const std::string& status
 void drawFooter(WINDOW* win) {
     werase(win);
     box(win, 0, 0);
-    mvwprintw(win, 1, 2, "[s] Demo(0x00)  [d] Demo(0xFF)  [c] Enviar custom  [e] Editar custom");
-    mvwprintw(win, 2, 2, "[r] Recargar custom  [i] Info  [q] Salir  [Up/Down PgUp/PgDn] Scroll");
+    mvwprintw(win, 1, 2, "[s] Demo(0x00)  [d] Demo(0xFF)  [t] Demo RX  [c] Enviar custom  [e] Editar custom");
+    mvwprintw(win, 2, 2, "[r] Recargar custom  [x] Guardar RX  [i] Info  [q] Salir  [Up/Down] Scroll");
     wrefresh(win);
 }
 
@@ -65,7 +66,7 @@ void drawScrollBar(WINDOW* win, int totalLines, int maxLines, int scrollOffset) 
         mvwaddch(win, y, w - 2, ACS_VLINE);
     }
 
-    const int knobPos = barTop + (barHeight - 1) * scrollOffset / maxStart;
+    const int knobPos = barTop + (barHeight - 1) * (maxStart - scrollOffset) / maxStart;
     mvwaddch(win, knobPos, w - 2, ACS_DIAMOND);
 }
 
@@ -142,16 +143,43 @@ std::string etherTypeLabel(std::uint16_t etherType) {
     }
 }
 
-void drawInfo(WINDOW* win) {
+void drawInfo(WINDOW* win, int infoPage = 0) {
     werase(win);
     box(win, 0, 0);
-    mvwprintw(win, 1, 2, "Info - Modo TUI");
-    mvwprintw(win, 3, 2, "TX (rojo): paquetes enviados al kernel (write).");
-    mvwprintw(win, 4, 2, "RX (verde): paquetes capturados desde el kernel (read).");
-    mvwprintw(win, 6, 2, "EtherType: IPv4/ARP/IPv6/DEMO. Otros = OTRO.");
-    mvwprintw(win, 7, 2, "Payload: bytes despues de los 14B de cabecera Ethernet.");
-    mvwprintw(win, 9, 2, "Controles: s/d demo, c custom, e editar, r recargar, q salir.");
-    mvwprintw(win, 10, 2, "Scroll logs: Flechas Arriba/Abajo o PgUp/PgDn.");
+    
+    if (infoPage == 0) {
+        mvwprintw(win, 1, 2, "Info - Conceptos Basicos (1/3)");
+        mvwprintw(win, 3, 2, "TX (rojo): Paquetes que tu programa envia al kernel.");
+        mvwprintw(win, 4, 2, "RX (verde): Paquetes que el kernel intenta enviar a la red.");
+        mvwprintw(win, 6, 2, "TAP: Interfaz virtual que simula un cable Ethernet.");
+        mvwprintw(win, 7, 2, "Trama Ethernet: MAC dst (6B) + MAC src (6B) + EtherType (2B) + Payload");
+        mvwprintw(win, 9, 2, "EtherType: Codigo de protocolo. 0x0800=IPv4, 0x0806=ARP, 0x88B5=Demo.");
+        mvwprintw(win, 10, 2, "Payload: Datos. Minimo 46 bytes (padding automatico).");
+        mvwprintw(win, 12, 2, "Controles: [i] Info  [/] Pagina anterior  [*] Siguiente  [q] Salir");
+    } else if (infoPage == 1) {
+        mvwprintw(win, 1, 2, "Info - Editar Paquetes Custom (2/3)");
+        mvwprintw(win, 3, 2, "Archivo: custom_packet.hex (editar con [e])");
+        mvwprintw(win, 4, 2, "Formato: Bytes en hexadecimal, separados por espacios.");
+        mvwprintw(win, 5, 2, "Comentarios: # o // al inicio de linea.");
+        mvwprintw(win, 7, 2, "Estructura minima (60 bytes):");
+        mvwprintw(win, 8, 2, "  ff ff ff ff ff ff    (MAC dest: broadcast)");
+        mvwprintw(win, 9, 2, "  02 00 00 00 00 01    (MAC src: fake)");
+        mvwprintw(win, 10, 2, "  88 b5                (EtherType: Demo)");
+        mvwprintw(win, 11, 2, "  42 00 00... (46 bytes payload minimo)");
+        mvwprintw(win, 13, 2, "Ejemplo: MAC 52:54:00:12:34:56 = 52 54 00 12 34 56");
+        mvwprintw(win, 14, 2, "Controles: [i] Info  [/] Anterior  [*] Siguiente  [q] Salir");
+    } else if (infoPage == 2) {
+        mvwprintw(win, 1, 2, "Info - Valores de Bits y Ejemplos (3/3)");
+        mvwprintw(win, 3, 2, "MAC Address (48 bits = 6 bytes):");
+        mvwprintw(win, 4, 2, "  ff:ff:ff:ff:ff:ff = Broadcast (todos los dispositivos)");
+        mvwprintw(win, 5, 2, "  00:11:22:33:44:55 = Unicast (dispositivo especifico)");
+        mvwprintw(win, 7, 2, "EtherType (16 bits = 2 bytes, Big Endian):");
+        mvwprintw(win, 8, 2, "  0x0800 = IPv4  | 0x0806 = ARP | 0x86DD = IPv6 | 0x88B5 = Demo");
+        mvwprintw(win, 10, 2, "Payload (variable, minimo 46 bytes):");
+        mvwprintw(win, 11, 2, "  Bytes arbitrarios (data util del protocolo)");
+        mvwprintw(win, 12, 2, "  42 = 'B' en ASCII, util para patrones visibles");
+        mvwprintw(win, 14, 2, "Controles: [i] Info  [/] Anterior  [*] Siguiente  [q] Salir");
+    }
     wrefresh(win);
 }
 } // namespace
@@ -207,11 +235,13 @@ int runTuiApp(TapDevice& tap) {
 
     bool running = true;
     bool showInfo = false;
+    int infoPage = 0;
     int scrollOffset = 0;
+    std::optional<EthernetFrame> lastRxFrame;
     while (running) {
         drawHeader(headerWin, tap.name(), status);
         if (showInfo) {
-            drawInfo(logWin);
+            drawInfo(logWin, infoPage);
         } else {
             drawLog(logWin, log, scrollOffset);
         }
@@ -229,19 +259,46 @@ int runTuiApp(TapDevice& tap) {
                 running = false;
             } else if (ch == 'i' || ch == 'I') {
                 showInfo = !showInfo;
+                infoPage = 0;
+            } else if (ch == '/' && showInfo) {
+                infoPage = (infoPage - 1 + 3) % 3;
+            } else if (ch == '*' && showInfo) {
+                infoPage = (infoPage + 1) % 3;
             } else if (ch == 's' || ch == 'S') {
-                auto bytes = serializeEthernetII(makeDefaultDemoFrame(0));
+                auto frame = makeDefaultDemoFrame(0);
+                auto bytes = serializeEthernetII(frame);
                 int sent = tap.write(bytes.data(), bytes.size());
                 status = txResult(sent);
-                log.push("[TX] Demo 0x00 -> " + status);
+                log.push("[TX] Demo 0x00 (" + std::to_string(bytes.size()) + "B) -> " + status);
             } else if (ch == 'd' || ch == 'D') {
-                auto bytes = serializeEthernetII(makeDefaultDemoFrame(1));
+                auto frame = makeDefaultDemoFrame(1);
+                auto bytes = serializeEthernetII(frame);
                 int sent = tap.write(bytes.data(), bytes.size());
                 status = txResult(sent);
-                log.push("[TX] Demo 0xFF -> " + status);
+                log.push("[TX] Demo 0xFF (" + std::to_string(bytes.size()) + "B) -> " + status);
             } else if (ch == 'e' || ch == 'E') {
+                endwin();
                 openFileInEditor(packetFile, msg);
-                log.push("[INFO] " + msg);
+                initscr();
+                cbreak();
+                noecho();
+                keypad(stdscr, TRUE);
+                nodelay(stdscr, TRUE);
+                curs_set(0);
+                if (has_colors()) {
+                    start_color();
+                    init_pair(1, COLOR_GREEN, COLOR_BLACK);
+                    init_pair(2, COLOR_RED, COLOR_BLACK);
+                    init_pair(3, COLOR_CYAN, COLOR_BLACK);
+                    init_pair(4, COLOR_YELLOW, COLOR_BLACK);
+                }
+                log.push(msg);
+                customPacket = loadCustomPacket(packetFile);
+                if (customPacket) {
+                    status = "Custom editado y recargado: " + std::to_string(customPacket->size()) + " bytes";
+                } else {
+                    status = "Error al parsear custom editado";
+                }
             } else if (ch == 'r' || ch == 'R') {
                 customPacket = loadCustomPacket(packetFile);
                 if (customPacket) {
@@ -260,14 +317,33 @@ int runTuiApp(TapDevice& tap) {
                     status = txResult(sent);
                     log.push("[TX] Custom -> " + status);
                 }
+            } else if (ch == 'x' || ch == 'X') {
+                if (!lastRxFrame) {
+                    log.push("[WARN] [RX] No hay paquete RX capturado para guardar");
+                } else {
+                    if (saveRxFrameAsCustom(*lastRxFrame, packetFile, msg)) {
+                        log.push(msg);
+                        customPacket = loadCustomPacket(packetFile);
+                        status = "RX guardado como custom";
+                    } else {
+                        log.push(msg);
+                        status = "Error al guardar RX";
+                    }
+                }
+            } else if (ch == 't' || ch == 'T') {
+                auto demoFrame = makeDefaultDemoFrame(0);
+                lastRxFrame = demoFrame;
+                const std::string typeLabel = etherTypeLabel(demoFrame.etherType);
+                log.push("[RX] Demo simulado: " + describeEthernetII(demoFrame) + " proto=" + typeLabel);
+                status = "RX Demo simulado (como si fuera del kernel)";
             } else if (ch == KEY_UP) {
-                scrollOffset += 1;
-            } else if (ch == KEY_DOWN) {
                 scrollOffset -= 1;
+            } else if (ch == KEY_DOWN) {
+                scrollOffset += 1;
             } else if (ch == KEY_PPAGE) {
-                scrollOffset += 5;
-            } else if (ch == KEY_NPAGE) {
                 scrollOffset -= 5;
+            } else if (ch == KEY_NPAGE) {
+                scrollOffset += 5;
             }
         }
 
@@ -276,6 +352,7 @@ int runTuiApp(TapDevice& tap) {
             if (n > 0) {
                 auto frameOpt = parseEthernetII(rxBuffer.data(), n);
                 if (frameOpt) {
+                    lastRxFrame = frameOpt;
                     const std::string typeLabel = etherTypeLabel(frameOpt->etherType);
                     log.push("[RX] " + describeEthernetII(*frameOpt) + " proto=" + typeLabel);
                 } else {

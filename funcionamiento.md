@@ -119,10 +119,30 @@ El panel de log tiene un **scrollbar** vertical en el borde derecho:
 *   PgUp/PgDn desplazan por bloques.
 *   El diamante indica la posición actual dentro del historial.
 
-### Pantalla de información
-Con la tecla `i` se abre una pantalla de ayuda que explica:
+### Edición y Captura de Custom
 
-*   Qué significa **TX** y **RX** respecto al Kernel.
-*   Qué representa **EtherType**.
-*   Qué es el **payload**.
-*   Controles disponibles.
+*   **`e` (Editar)**: Abre el archivo `custom_packet.hex` en `$EDITOR` (nano/vi). El programa suspende ncurses, espera a que **cierres el editor**, reinicia ncurses y recarga automáticamente el archivo. Esto evita crashes de terminal.
+*   **`x` (Capturar RX)**: Guarda el último paquete RX capturado como custom en hex format legible para humanos.
+
+### Scroll y Navegación
+
+*   El scroll es intuitivo: **Flechas arriba = sube en el log**, **flechas abajo = baja en el log**.
+*   La **scrollbar** (diamante vertical derecho) se posiciona según la altura actual en el historial.
+*   **PgUp/PgDn** saltan por bloques de 5 líneas.
+
+### Demos (Paquetes de Prueba)
+
+*   **`s` (Demo TX 0x00)**: Envía un paquete de demostración con payload relleno de 0x00. Se muestra como `[TX]` en el log.
+*   **`d` (Demo TX 0xFF)**: Envía un paquete de demostración con payload relleno de 0xFF. Se muestra como `[TX]` en el log.
+*   **`t` (Demo RX simulado)**: Simula que el kernel envía un paquete demo (como si alguien hiciera `ping`). Se muestra como `[RX]` en el log.
+*   Todos usan la estructura de trama Ethernet estándar (14 bytes de cabecera + 46 bytes de payload mínimo).
+
+### Pantalla de información (Paginada)
+Con la tecla `i` se abre una pantalla de ayuda con 3 páginas. Navega con:
+*   **`/`** (barra): página anterior
+*   **`*`** (asterisco): página siguiente
+
+Las 3 páginas cubren:
+1.  **Conceptos básicos**: TX/RX, TAP, estructura Ethernet, EtherType, payload.
+2.  **Editar paquetes custom**: Formato hex, estructura mínima, ejemplo de edición.
+3.  **Valores de bits y ejemplos**: MAC addresses, códigos de EtherType, patrones de payload.
