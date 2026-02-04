@@ -84,14 +84,49 @@ Este conjunto de funciones libres y estructuras define cómo se interpretan los 
 Para comprender el comportamiento real del programa, es necesario entender su relación con la configuración del sistema operativo.
 
 ### Modelo Mental de Entrada/Salida (Direccionalidad)
-Dado que TAP es una interfaz virtual, los conceptos de "Lectura" y "Escritura" son inversos respecto al punto de vista del Kernel:
 
-1.  **Escritura (`tap.write`) = Inyección "Rx" al Kernel**:
-    *   Cuando el programa llama a `write`, el Kernel de Linux **recibe** esos datos como si hubieran llegado por un cable físico.
-    *   *Uso*: Simular tráfico entrante para ver cómo responde el sistema operativo (ej. enviar un paquete ARP Reply falso).
-2.  **Lectura (`tap.read`) = Captura "Tx" del Kernel**:
-    *   Cuando el programa llama a `read`, obtiene los datos que el Kernel está intentando **enviar** hacia la red.
-    *   *Uso*: Sniffing o captura de tráfico generado por aplicaciones o por el propio sistema (ej. capturar un `ping` que el usuario ejecuta en la terminal).
+**CONCEPTO CLAVE**: Los términos RX/TX en este programa se definen desde la **perspectiva del programa**, no del kernel. Esto puede parecer invertido respecto a la terminología de red tradicional, pero sigue la lógica de las operaciones de I/O del programa:
+
+#### TX (Transmit - Escritura desde el programa)
+*   **Operación**: `tap.write()` - El programa **escribe** datos al dispositivo TAP.
+*   **Vista del Kernel**: El kernel **recibe** estos datos como si hubieran llegado por un cable físico conectado.
+*   **Dirección del flujo**: Programa → Kernel (simulando: Red física → Kernel)
+*   **Uso práctico**:
+    *   Inyectar tráfico simulado para testing
+    *   Enviar respuestas falsas (ej: ARP reply spoofing)
+    *   Simular un dispositivo de red que "habla" al sistema
+    *   Probar cómo el stack TCP/IP del kernel reacciona a paquetes específicos
+*   **Ejemplo**: Ejecutas `[s]` o `[c]` en la app → Se muestra `[TX]` en rojo → El kernel procesa ese paquete como "recibido de la red".
+
+#### RX (Receive - Lectura desde el programa)
+*   **Operación**: `tap.read()` - El programa **lee** datos del dispositivo TAP.
+*   **Vista del Kernel**: El kernel **envía** estos datos hacia la red (pero el TAP los captura antes).
+*   **Dirección del flujo**: Kernel → Programa (capturando: Kernel → Red física)
+*   **Uso práctico**:
+    *   Sniffing del tráfico saliente del sistema
+    *   Capturar paquetes generados por aplicaciones (ping, curl, navegador)
+    *   Monitorear qué intenta enviar el sistema operativo
+    *   Debugging de protocolos de red a nivel de trama
+*   **Ejemplo**: Ejecutas `ping 192.168.1.1` desde otra terminal → El kernel genera ICMP → Se muestra `[RX]` en verde → Tu programa captura lo que el kernel quería enviar.
+
+#### Analogía con hardware de red real
+
+Si pensamos en una tarjeta de red Ethernet física:
+*   **TX del hardware**: La tarjeta **transmite** bits al cable (sale del ordenador)
+*   **RX del hardware**: La tarjeta **recibe** bits del cable (entra al ordenador)
+
+Con el TAP, el programa actúa como "el cable" en el medio:
+*   **TX del programa** (`write`): Inyecta datos "como si vinieran del cable" → El kernel los **recibe**
+*   **RX del programa** (`read`): Captura datos "que van hacia el cable" → El kernel los está **transmitiendo**
+
+#### Tabla resumen de perspectivas
+
+| Operación | Función API | Programa | Kernel | Terminología de red tradicional |
+|-----------|------------|----------|--------|----------------------------------|
+| TX        | `write()`  | Envía    | Recibe | RX (desde perspectiva del kernel) |
+| RX        | `read()`   | Recibe   | Envía  | TX (desde perspectiva del kernel) |
+
+**Nota importante**: Al usar `[x]` (Guardar RX como custom), estás guardando un paquete que el kernel generó. Luego, si lo reenvías con `[c]`, lo estás inyectando de vuelta al kernel como si fuera nuevo tráfico entrante.
 
 ### Configuración del SO (Prerrequisitos)
 El código asume que la interfaz virtual ya ha sido configurada externamente. Sin estos pasos, `tap.read` no recibirá nada y `tap.write` enviará paquetes a la nada:

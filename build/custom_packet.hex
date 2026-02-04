@@ -1,0 +1,5 @@
+# Custom Ethernet frame bytes (no FCS)
+# Format: hex bytes separated by spaces/newlines. Comments with # or //.
+# dst-mac (6)   src-mac (6)   ethertype (2)   payload (...)
+ff ff ff ff ff ff   02 00 00 00 00 01   88 b5
+42 00 50 00 00 00 00 00 00 00 00 00 00 00 00 00

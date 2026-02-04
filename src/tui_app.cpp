@@ -148,14 +148,18 @@ void drawInfo(WINDOW* win, int infoPage = 0) {
     box(win, 0, 0);
     
     if (infoPage == 0) {
-        mvwprintw(win, 1, 2, "Info - Conceptos Basicos (1/3)");
-        mvwprintw(win, 3, 2, "TX (rojo): Paquetes que tu programa envia al kernel.");
-        mvwprintw(win, 4, 2, "RX (verde): Paquetes que el kernel intenta enviar a la red.");
-        mvwprintw(win, 6, 2, "TAP: Interfaz virtual que simula un cable Ethernet.");
-        mvwprintw(win, 7, 2, "Trama Ethernet: MAC dst (6B) + MAC src (6B) + EtherType (2B) + Payload");
-        mvwprintw(win, 9, 2, "EtherType: Codigo de protocolo. 0x0800=IPv4, 0x0806=ARP, 0x88B5=Demo.");
-        mvwprintw(win, 10, 2, "Payload: Datos. Minimo 46 bytes (padding automatico).");
-        mvwprintw(win, 12, 2, "Controles: [i] Info  [-] Pagina anterior  [+] Siguiente  [q] Salir");
+        mvwprintw(win, 1, 2, "Info - Conceptos Basicos: RX vs TX (1/3)");
+        mvwprintw(win, 3, 2, "*** IMPORTANTE: Direccionalidad desde perspectiva del PROGRAMA ***");
+        mvwprintw(win, 5, 2, "TX (rojo): Paquetes que tu programa ESCRIBE al kernel (tap.write)");
+        mvwprintw(win, 6, 2, "  -> El kernel los RECIBE como si vinieran de la red fisica.");
+        mvwprintw(win, 7, 2, "  -> Uso: Inyectar trafico simulado (ej: ARP reply falso, ICMP).");
+        mvwprintw(win, 9, 2, "RX (verde): Paquetes que el kernel ENVIA a la red (tap.read captura)");
+        mvwprintw(win, 10, 2, "  -> Tu programa los LEE como sniffing del trafico saliente.");
+        mvwprintw(win, 11, 2, "  -> Uso: Capturar trafico generado por el SO (ej: ping, curl).");
+        mvwprintw(win, 13, 2, "TAP: Interfaz virtual que simula un cable Ethernet de capa 2.");
+        mvwprintw(win, 15, 2, "Trama Ethernet: MAC dst (6B) + MAC src (6B) + EtherType (2B) + Payload");
+        mvwprintw(win, 16, 2, "EtherType: 0x0800=IPv4, 0x0806=ARP, 0x86DD=IPv6, 0x88B5=Demo.");
+        mvwprintw(win, 18, 2, "Controles: [i] Info  [-] Pagina anterior  [+] Siguiente  [q] Salir");
     } else if (infoPage == 1) {
         mvwprintw(win, 1, 2, "Info - Editar Paquetes Custom (2/3)");
         mvwprintw(win, 3, 2, "Archivo: custom_packet.hex (editar con [e])");
@@ -167,7 +171,7 @@ void drawInfo(WINDOW* win, int infoPage = 0) {
         mvwprintw(win, 10, 2, "  88 b5                (EtherType: Demo)");
         mvwprintw(win, 11, 2, "  42 00 00... (46 bytes payload minimo)");
         mvwprintw(win, 13, 2, "Ejemplo: MAC 52:54:00:12:34:56 = 52 54 00 12 34 56");
-        mvwprintw(win, 14, 2, "Controles: [i] Info  [/] Anterior  [*] Siguiente  [q] Salir");
+        mvwprintw(win, 14, 2, "Controles: [i] Info  [-] Anterior  [+] Siguiente  [q] Salir");
     } else if (infoPage == 2) {
         mvwprintw(win, 1, 2, "Info - Valores de Bits y Ejemplos (3/3)");
         mvwprintw(win, 3, 2, "MAC Address (48 bits = 6 bytes):");
@@ -178,7 +182,7 @@ void drawInfo(WINDOW* win, int infoPage = 0) {
         mvwprintw(win, 10, 2, "Payload (variable, minimo 46 bytes):");
         mvwprintw(win, 11, 2, "  Bytes arbitrarios (data util del protocolo)");
         mvwprintw(win, 12, 2, "  42 = 'B' en ASCII, util para patrones visibles");
-        mvwprintw(win, 14, 2, "Controles: [i] Info  [/] Anterior  [*] Siguiente  [q] Salir");
+        mvwprintw(win, 14, 2, "Controles: [i] Info  [-] Anterior  [+] Siguiente  [q] Salir");
     }
     wrefresh(win);
 }
@@ -323,8 +327,14 @@ int runTuiApp(TapDevice& tap) {
                 } else {
                     if (saveRxFrameAsCustom(*lastRxFrame, packetFile, msg)) {
                         log.push(msg);
+                        // BUGFIX: Recargar el custom después de guardarlo
                         customPacket = loadCustomPacket(packetFile);
-                        status = "RX guardado como custom";
+                        if (customPacket) {
+                            status = "RX guardado y cargado como custom (" + std::to_string(customPacket->size()) + " bytes)";
+                        } else {
+                            status = "RX guardado pero error al recargar";
+                            log.push("[WARN] Error al recargar custom después de guardar RX");
+                        }
                     } else {
                         log.push(msg);
                         status = "Error al guardar RX";
