@@ -155,7 +155,7 @@ void drawInfo(WINDOW* win, int infoPage = 0) {
         mvwprintw(win, 7, 2, "Trama Ethernet: MAC dst (6B) + MAC src (6B) + EtherType (2B) + Payload");
         mvwprintw(win, 9, 2, "EtherType: Codigo de protocolo. 0x0800=IPv4, 0x0806=ARP, 0x88B5=Demo.");
         mvwprintw(win, 10, 2, "Payload: Datos. Minimo 46 bytes (padding automatico).");
-        mvwprintw(win, 12, 2, "Controles: [i] Info  [/] Pagina anterior  [*] Siguiente  [q] Salir");
+        mvwprintw(win, 12, 2, "Controles: [i] Info  [-] Pagina anterior  [+] Siguiente  [q] Salir");
     } else if (infoPage == 1) {
         mvwprintw(win, 1, 2, "Info - Editar Paquetes Custom (2/3)");
         mvwprintw(win, 3, 2, "Archivo: custom_packet.hex (editar con [e])");
@@ -260,9 +260,9 @@ int runTuiApp(TapDevice& tap) {
             } else if (ch == 'i' || ch == 'I') {
                 showInfo = !showInfo;
                 infoPage = 0;
-            } else if (ch == '/' && showInfo) {
+            } else if (ch == '-' && showInfo) {
                 infoPage = (infoPage - 1 + 3) % 3;
-            } else if (ch == '*' && showInfo) {
+            } else if (ch == '+' && showInfo) {
                 infoPage = (infoPage + 1) % 3;
             } else if (ch == 's' || ch == 'S') {
                 auto frame = makeDefaultDemoFrame(0);
