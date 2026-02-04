@@ -23,7 +23,7 @@ Controles de la TUI:
 - `e`: editar paquete custom (abre en $EDITOR, espera y recarga automáticamente, sin crashes)
 - `r`: recargar paquete custom desde archivo
 - `x`: guardar el último paquete RX capturado como custom
-- `i`: ayuda/explicación (3 páginas con [/] y [*] para navegar)
+- `i`: ayuda/explicación (3 páginas con [-] y [+] para navegar)
 - Flechas UP/DOWN: scroll línea a línea (intuitivo)
 - PgUp/PgDn: scroll por bloques de 5 líneas
 - `q`: salir
@@ -35,5 +35,4 @@ Notas:
 - Con `x` puedes capturar paquetes RX reales y usarlos como plantilla custom.
 - Los demos `s` y `d` muestran el tamaño exacto en bytes enviados.
 
-https://github.com/user-attachments/assets/7b9cfc4c-973b-4271-873e-2cb22caf2c0e
 
