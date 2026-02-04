@@ -27,8 +27,8 @@ Controles de la TUI:
 - `r`: recargar paquete custom desde archivo
 - `x`: guardar el último paquete RX capturado como custom
 - `i`: ayuda/explicación (3 páginas con [-] y [+] para navegar)
-- Flechas UP/DOWN: scroll línea a línea (intuitivo)
-- PgUp/PgDn: scroll por bloques de 5 líneas
+- flechas `UP/DOWN`: scroll línea a línea (intuitivo)
+- `PgUp/PgDn`: scroll por bloques de 5 líneas
 - `q`: salir
 
 Notas:
