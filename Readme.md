@@ -14,7 +14,10 @@ sudo ip link set dev tap0 up
 sudo ip addr add 10.0.0.1/24 dev tap0
 ```
 
-https://github.com/user-attachments/assets/baf50d88-643d-4d50-9b5d-80518e93a59f
+
+https://github.com/user-attachments/assets/67890a9b-0904-47d5-82ca-c835c915dbdc
+
+
 
 
 Controles de la TUI:
