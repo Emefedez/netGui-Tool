@@ -1,6 +1,6 @@
 # Documentación Técnica Detallada
 
-Este documento detalla el funcionamiento específico de cada variable y función dentro de los módulos principales del proyecto.
+Este documento detalla el funcionamiento específico de cada variable y función dentro de los módulos principales del proyecto, así como la interacción lógica con el sistema operativo.
 
 ## 1. Módulo TAP (`include/tap.h`, `src/tap.cpp`)
 
@@ -76,3 +76,26 @@ Este conjunto de funciones libres y estructuras define cómo se interpretan los 
     *   *Acción*: Genera un resumen legible para humanos de la trama, mostrando "MAC Origen -> MAC Destino, Protocolo, Tamaño Payload". Útil para debugging visual rápido.
 *   **`std::optional<std::vector<std::uint8_t>> parseHexBytesFile(const std::string& fileContent)`**:
     *   *Acción*: Lee el contenido de un archivo de texto, ignora comentarios (# o //) y espacios, y convierte los valores hexadecimales textuales en un buffer binario real para inyectar tráfico.
+
+---
+
+## 3. Flujo de Datos y Configuración del Sistema
+
+Para comprender el comportamiento real del programa, es necesario entender su relación con la configuración del sistema operativo.
+
+### Modelo Mental de Entrada/Salida (Direccionalidad)
+Dado que TAP es una interfaz virtual, los conceptos de "Lectura" y "Escritura" son inversos respecto al punto de vista del Kernel:
+
+1.  **Escritura (`tap.write`) = Inyección "Rx" al Kernel**:
+    *   Cuando el programa llama a `write`, el Kernel de Linux **recibe** esos datos como si hubieran llegado por un cable físico.
+    *   *Uso*: Simular tráfico entrante para ver cómo responde el sistema operativo (ej. enviar un paquete ARP Reply falso).
+2.  **Lectura (`tap.read`) = Captura "Tx" del Kernel**:
+    *   Cuando el programa llama a `read`, obtiene los datos que el Kernel está intentando **enviar** hacia la red.
+    *   *Uso*: Sniffing o captura de tráfico generado por aplicaciones o por el propio sistema (ej. capturar un `ping` que el usuario ejecuta en la terminal).
+
+### Configuración del SO (Prerrequisitos)
+El código asume que la interfaz virtual ya ha sido configurada externamente. Sin estos pasos, `tap.read` no recibirá nada y `tap.write` enviará paquetes a la nada:
+
+*   **Creación**: `ip tuntap add dev tap0 mode tap` (Crea la tubería).
+*   **Enlace (Link Up)**: `ip link set up dev tap0` (Equivalente a conectar el cable).
+*   **Direccionamiento (Opcional)**: `ip addr add 192.168.X.X/24 dev tap0` (Necesario para que el Kernel responda a protocolos IP/ICMP).
