@@ -1,18 +1,56 @@
-# Build artefacts
+# Build directories and artifacts
 /build/
-/CMakeFiles/
-/cmake_install.cmake
-/CMakeCache.txt
-/Makefile
-/build.ninja
-/compile_commands.json
-/netGui
+/cmake-build*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+Makefile*
+build.ninja
+rules.ninja
 
-# Editor/IDE
+# Executables and object files
+netGui
+*.o
+*.obj
+*.so
+*.a
+*.dll
+
+# IDE, editors and OS files
 .vscode/
+.idea/
+.vs/
 *.swp
+*.swo
 *~
-
-# OS
 .DS_Store
+Thumbs.db
+*.dSYM/
+
+# Temp and logs
+/tmp/
+/temp/
+*.log
+
+# Coverage and analysis
+coverage/
+*.gcda
+*.gcno
+
+# Misc
+.cache/
+/.cache/
+.clangd
+bear.json
+
+# Node / Python leftovers (if any)
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Ignore compiled CMake files in source tree
+CMakeFiles/
+CMakeCache.txt
 /.vscode
