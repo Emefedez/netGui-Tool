@@ -1,6 +1,12 @@
 [
 {
   "directory": "/home/t480s/Documentos/netGui-Tool",
+  "command": "/usr/bin/c++  -I/home/t480s/Documentos/netGui-Tool/include -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/arp.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/arp.cpp",
+  "file": "/home/t480s/Documentos/netGui-Tool/src/arp.cpp",
+  "output": "CMakeFiles/netGui.dir/src/arp.cpp.o"
+},
+{
+  "directory": "/home/t480s/Documentos/netGui-Tool",
   "command": "/usr/bin/c++  -I/home/t480s/Documentos/netGui-Tool/include -std=gnu++17 -Wall -g -o CMakeFiles/netGui.dir/src/ethernet.cpp.o -c /home/t480s/Documentos/netGui-Tool/src/ethernet.cpp",
   "file": "/home/t480s/Documentos/netGui-Tool/src/ethernet.cpp",
   "output": "CMakeFiles/netGui.dir/src/ethernet.cpp.o"

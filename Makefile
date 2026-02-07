@@ -129,6 +129,30 @@ netGui/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/netGui.dir/build.make CMakeFiles/netGui.dir/build
 .PHONY : netGui/fast
 
+src/arp.o: src/arp.cpp.o
+.PHONY : src/arp.o
+
+# target to build an object file
+src/arp.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/netGui.dir/build.make CMakeFiles/netGui.dir/src/arp.cpp.o
+.PHONY : src/arp.cpp.o
+
+src/arp.i: src/arp.cpp.i
+.PHONY : src/arp.i
+
+# target to preprocess a source file
+src/arp.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/netGui.dir/build.make CMakeFiles/netGui.dir/src/arp.cpp.i
+.PHONY : src/arp.cpp.i
+
+src/arp.s: src/arp.cpp.s
+.PHONY : src/arp.s
+
+# target to generate assembly for a file
+src/arp.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/netGui.dir/build.make CMakeFiles/netGui.dir/src/arp.cpp.s
+.PHONY : src/arp.cpp.s
+
 src/ethernet.o: src/ethernet.cpp.o
 .PHONY : src/ethernet.o
 
@@ -258,6 +282,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... netGui"
+	@echo "... src/arp.o"
+	@echo "... src/arp.i"
+	@echo "... src/arp.s"
 	@echo "... src/ethernet.o"
 	@echo "... src/ethernet.i"
 	@echo "... src/ethernet.s"
