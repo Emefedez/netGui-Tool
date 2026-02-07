@@ -116,6 +116,14 @@ Notas importantes:
 - `parseEthernetII()` no intenta reconstruir FCS ni validar CRC; confía en que el driver entregó una trama completa.
 - Estas funciones permiten separar con claridad la representación en memoria (estructuras C++) de la representación en el medio físico (buffer de bytes), lo que facilita su uso por la TUI, por las rutinas de logging y por las acciones de inyección (`[c]`, `[s]`, `[d]`).
 
+### Comentarios restaurados (aclaraciones útiles)
+
+- Los campos `hardwareType`, `protocolType` y `opcode` en ARP están en **big-endian**, por eso se convierten con `ntohs()`.
+- En ARP, los tamaños (`hardwareSize`, `protocolSize`) permiten soportar otros medios, pero aquí se **restringen** a Ethernet (6) e IPv4 (4).
+- Una ARP Request siempre lleva **Target MAC = 00:00:00:00:00:00** porque se está preguntando por ella.
+- Para ARP Reply, se invierten roles: el solicitante pasa a ser `target` y el respondedor pasa a ser `sender`.
+- El padding de Ethernet aplica igual para ARP: si el payload es menor a 46 bytes, se rellena a ese mínimo.
+
 ---
 
 ## 3. Flujo de Datos y Configuración del Sistema
