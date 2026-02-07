@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <array>
 #include <optional>
@@ -8,7 +9,16 @@
 #include <chrono>
 #include "ethernet.h"
 
-using Ipv4Address = std::array<std::uint8_t, 4>;
+union Ipv4Address {
+    std::uint32_t ipv4;
+    struct {
+        std::uint8_t octet1;
+        std::uint8_t octet2;
+        std::uint8_t octet3;
+        std::uint8_t octet4;
+    } octets;
+    std::uint8_t bytes[4];
+};
 
 #pragma pack(push, 1)
 struct ArpHeader { //RECORDAR: big-endian

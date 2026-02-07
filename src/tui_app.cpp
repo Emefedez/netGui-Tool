@@ -718,16 +718,37 @@ int runTuiApp(TapDevice& tap) {
 
     // Identidad local mínima para responder ARP (ajusta si usas otra IP/MAC).
     const MacAddress myMac = MacAddress{0x02, 0x00, 0x00, 0x00, 0x00, 0x01};
-    const Ipv4Address myIp = Ipv4Address{192, 168, 100, 50};
-    const Ipv4Address arpTargetIp = Ipv4Address{192, 168, 100, 1};
+    const Ipv4Address myIp = []() {
+        Ipv4Address ip{};
+        ip.bytes[0] = 192;
+        ip.bytes[1] = 168;
+        ip.bytes[2] = 100;
+        ip.bytes[3] = 50;
+        return ip;
+    }();
+    const Ipv4Address arpTargetIp = []() {
+        Ipv4Address ip{};
+        ip.bytes[0] = 192;
+        ip.bytes[1] = 168;
+        ip.bytes[2] = 100;
+        ip.bytes[3] = 1;
+        return ip;
+    }();
     const MacAddress demoPeerMac = MacAddress{0x02, 0x00, 0x00, 0x00, 0x00, 0x02};
-    const Ipv4Address demoPeerIp = Ipv4Address{192, 168, 100, 1};
+    const Ipv4Address demoPeerIp = []() {
+        Ipv4Address ip{};
+        ip.bytes[0] = 192;
+        ip.bytes[1] = 168;
+        ip.bytes[2] = 100;
+        ip.bytes[3] = 1;
+        return ip;
+    }();
 
     auto ipToKey = [](const Ipv4Address& ip) -> std::uint32_t {
-        return (static_cast<std::uint32_t>(ip[0]) << 24) |
-               (static_cast<std::uint32_t>(ip[1]) << 16) |
-               (static_cast<std::uint32_t>(ip[2]) << 8) |
-               static_cast<std::uint32_t>(ip[3]);
+        return (static_cast<std::uint32_t>(ip.octets.octet1) << 24) |
+               (static_cast<std::uint32_t>(ip.octets.octet2) << 16) |
+               (static_cast<std::uint32_t>(ip.octets.octet3) << 8) |
+               static_cast<std::uint32_t>(ip.octets.octet4);
     };
 
     std::unordered_map<std::uint32_t, ArpEntry> arpTable;
@@ -763,22 +784,22 @@ int runTuiApp(TapDevice& tap) {
 
                 if (infoOpt->opcode == 1) {
                     arpSummary = "REQ who-has " +
-                                 std::to_string(infoOpt->targetIp[0]) + "." +
-                                 std::to_string(infoOpt->targetIp[1]) + "." +
-                                 std::to_string(infoOpt->targetIp[2]) + "." +
-                                 std::to_string(infoOpt->targetIp[3]) +
+                                 std::to_string(infoOpt->targetIp.bytes[0]) + "." +
+                                 std::to_string(infoOpt->targetIp.bytes[1]) + "." +
+                                 std::to_string(infoOpt->targetIp.bytes[2]) + "." +
+                                 std::to_string(infoOpt->targetIp.bytes[3]) +
                                  " tell " +
-                                 std::to_string(infoOpt->senderIp[0]) + "." +
-                                 std::to_string(infoOpt->senderIp[1]) + "." +
-                                 std::to_string(infoOpt->senderIp[2]) + "." +
-                                 std::to_string(infoOpt->senderIp[3]);
+                                 std::to_string(infoOpt->senderIp.bytes[0]) + "." +
+                                 std::to_string(infoOpt->senderIp.bytes[1]) + "." +
+                                 std::to_string(infoOpt->senderIp.bytes[2]) + "." +
+                                 std::to_string(infoOpt->senderIp.bytes[3]);
                     log.push("[INFO] ARP REQ: " + arpSummary.substr(4));
                 } else if (infoOpt->opcode == 2) {
                     arpSummary = "REP " +
-                                 std::to_string(infoOpt->senderIp[0]) + "." +
-                                 std::to_string(infoOpt->senderIp[1]) + "." +
-                                 std::to_string(infoOpt->senderIp[2]) + "." +
-                                 std::to_string(infoOpt->senderIp[3]) +
+                                 std::to_string(infoOpt->senderIp.bytes[0]) + "." +
+                                 std::to_string(infoOpt->senderIp.bytes[1]) + "." +
+                                 std::to_string(infoOpt->senderIp.bytes[2]) + "." +
+                                 std::to_string(infoOpt->senderIp.bytes[3]) +
                                  " is-at " + macToString(infoOpt->senderMac);
                     log.push("[INFO] ARP REP: " + arpSummary.substr(4));
                 }

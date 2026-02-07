@@ -1,4 +1,4 @@
-#include "ethernet.h"
+ #include "ethernet.h"
 
 #include <algorithm>
 #include <cctype>

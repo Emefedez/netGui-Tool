@@ -10,13 +10,6 @@
 #include <string>
 #include <cstring>
 
-// Compara una dirección IP (4 bytes) con un objeto Ipv4Address.
-// Retorna true si son iguales, false en caso contrario.
-static bool ipEquals(const std::uint8_t* ip, const Ipv4Address& other)
-{
-	return std::equal(ip, ip + other.size(), other.begin());
-}
-
 // Convierte una IP (4 bytes) a texto "a.b.c.d" para logs.
 // Recibe un puntero a 4 bytes y retorna un string con el formato dotted decimal.
 static std::string ipToString(const std::uint8_t* ip)
@@ -42,15 +35,14 @@ std::vector<std::string> formatArpTable(
 
 	for (const auto& it : table) {
 		std::uint32_t key = it.first;
-		Ipv4Address ip = {
-			static_cast<std::uint8_t>((key >> 24) & 0xFF),
-			static_cast<std::uint8_t>((key >> 16) & 0xFF),
-			static_cast<std::uint8_t>((key >> 8) & 0xFF),
-			static_cast<std::uint8_t>(key & 0xFF)
-		};
+		Ipv4Address ip{};
+		ip.octets.octet1 = static_cast<std::uint8_t>((key >> 24) & 0xFF);
+		ip.octets.octet2 = static_cast<std::uint8_t>((key >> 16) & 0xFF);
+		ip.octets.octet3 = static_cast<std::uint8_t>((key >> 8) & 0xFF);
+		ip.octets.octet4 = static_cast<std::uint8_t>(key & 0xFF);
 		long ttl = std::chrono::duration_cast<std::chrono::seconds>(it.second.expiresAt - now).count();
 		if (ttl < 0) ttl = 0;
-		std::string line = ipToString(ip.data()) + " -> " + macToString(it.second.mac) +
+		std::string line = ipToString(ip.bytes) + " -> " + macToString(it.second.mac) +
 			" (" + std::to_string(ttl) + ")" + (it.second.resolved ? "" : " [PEND]");
 		lines.push_back(line);
 	}
@@ -118,8 +110,8 @@ std::optional<ArpInfo> parseArpFrame(const EthernetFrame& frame)
 	info.opcode = opcode;
 	std::copy_n(payload.data() + offsetSenderMac, 6, info.senderMac.begin());
 	std::copy_n(payload.data() + offsetTargetMac, 6, info.targetMac.begin());
-	std::copy_n(payload.data() + offsetSenderIp, 4, info.senderIp.begin());
-	std::copy_n(payload.data() + offsetTargetIp, 4, info.targetIp.begin());
+	std::copy_n(payload.data() + offsetSenderIp, 4, info.senderIp.bytes);
+	std::copy_n(payload.data() + offsetTargetIp, 4, info.targetIp.bytes);
 	return info;
 }
 
@@ -134,7 +126,7 @@ std::optional<EthernetFrame> makeArpReply(const EthernetFrame& frame,
 	if (!infoOpt) return std::nullopt;
 	const ArpInfo& info = *infoOpt;
 	if (info.opcode != 1) return std::nullopt;
-	if (!ipEquals(info.targetIp.data(), myIp)) return std::nullopt;
+	if (std::memcmp(info.targetIp.bytes, myIp.bytes, 4) != 0) return std::nullopt;
 
 	EthernetFrame reply;
 	reply.dst = info.senderMac;
@@ -152,11 +144,11 @@ std::optional<EthernetFrame> makeArpReply(const EthernetFrame& frame,
 	std::uint8_t* out = reply.payload.data();
 	std::memcpy(out, &outHeader, sizeof(ArpHeader));
 	std::memcpy(out + sizeof(ArpHeader), myMac.data(), 6);
-	std::memcpy(out + sizeof(ArpHeader) + 6, myIp.data(), 4);
+	std::memcpy(out + sizeof(ArpHeader) + 6, myIp.bytes, 4);
 	std::memcpy(out + sizeof(ArpHeader) + 6 + 4, info.senderMac.data(), 6);
-	std::memcpy(out + sizeof(ArpHeader) + 6 + 4 + 6, info.senderIp.data(), 4);
+	std::memcpy(out + sizeof(ArpHeader) + 6 + 4 + 6, info.senderIp.bytes, 4);
 
-	outMsg = "ARP Reply: " + ipToString(myIp.data()) + " is-at " + macToString(myMac);
+	outMsg = "ARP Reply: " + ipToString(myIp.bytes) + " is-at " + macToString(myMac);
 	return reply;
 }
 
@@ -186,13 +178,13 @@ std::optional<EthernetFrame> makeArpRequest(const MacAddress& myMac,
 	std::memcpy(out, &header, sizeof(ArpHeader));
 	// Sender MAC/IP
 	std::memcpy(out + sizeof(ArpHeader), myMac.data(), 6);
-	std::memcpy(out + sizeof(ArpHeader) + 6, myIp.data(), 4);
+	std::memcpy(out + sizeof(ArpHeader) + 6, myIp.bytes, 4);
 	// Target MAC (desconocida = 00:00:00:00:00:00)
 	std::memset(out + sizeof(ArpHeader) + 6 + 4, 0, 6);
 	// Target IP
-	std::memcpy(out + sizeof(ArpHeader) + 6 + 4 + 6, targetIp.data(), 4);
+	std::memcpy(out + sizeof(ArpHeader) + 6 + 4 + 6, targetIp.bytes, 4);
 
-	outMsg = "ARP Request: who-has " + ipToString(targetIp.data()) + " tell " + ipToString(myIp.data());
+	outMsg = "ARP Request: who-has " + ipToString(targetIp.bytes) + " tell " + ipToString(myIp.bytes);
 	return req;
 }
 
