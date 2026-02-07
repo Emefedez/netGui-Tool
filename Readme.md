@@ -15,11 +15,14 @@ sudo ip addr add 10.0.0.1/24 dev tap0
 ```
 **Video Demo:**
 
-https://github.com/user-attachments/assets/4d9e3035-72be-4305-861d-157fe1b0d9d5
+https://github.com/user-attachments/assets/868c6b9f-1103-4636-8c91-8ce3bd637539
 
 
 **Info Screen:**
-<img width="1024" height="7020" alt="imagen" src="https://github.com/user-attachments/assets/18037c2f-bfb6-438e-87f7-b7d9058aa02e" />
+<img width="1024" height="720" alt="imagen" src="https://github.com/user-attachments/assets/18037c2f-bfb6-438e-87f7-b7d9058aa02e" />
+
+
+
 
 
 Controles de la TUI:
