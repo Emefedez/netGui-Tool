@@ -31,7 +31,7 @@ struct LogBuffer {
 
 // ARP table types and formatters live in arp.h/arp.cpp
 
-void drawHeader(WINDOW* win, const std::string& iface, const std::string& status) {
+void drawHeader(WINDOW* win, const std::string& iface, const std::string& status, const std::string& arpSummary) {
     int h, w;
     getmaxyx(win, h, w);
     (void)h;
@@ -43,10 +43,12 @@ void drawHeader(WINDOW* win, const std::string& iface, const std::string& status
 
     const std::string line1 = "NetGui-Tool (TUI) [RX:Verde TX:Rojo Warn:Amarillo]";
     const std::string line2 = "Interfaz: " + iface + " | Estado: " + status;
+    const std::string line3 = "ARP: " + arpSummary;
 
     if (innerWidth > 0) {
         mvwaddnstr(win, 1, x, line1.c_str(), maxWidth);
         mvwaddnstr(win, 2, x, line2.c_str(), maxWidth);
+        mvwaddnstr(win, 3, x, line3.c_str(), maxWidth);
     }
     wrefresh(win);
 }
@@ -70,6 +72,12 @@ void drawFooter(WINDOW* win) {
         mvwaddnstr(win, 1, x + 5, line1.c_str(), maxWidth - 5);
 
         wattron(win, COLOR_PAIR(6));
+        mvwaddnstr(win, 1, x + 17, "RECV:", 5);
+        wattroff(win, COLOR_PAIR(6));
+        std::string line1c = " [n]Menu";
+        mvwaddnstr(win, 1, x + 22, line1c.c_str(), maxWidth - 22);
+
+        wattron(win, COLOR_PAIR(6));
         mvwaddnstr(win, 1, x + 35, "EDIT:", 5);
         wattroff(win, COLOR_PAIR(6));
         
@@ -80,7 +88,7 @@ void drawFooter(WINDOW* win) {
         mvwaddnstr(win, 2, x, "SYS:", 4);
         wattroff(win, COLOR_PAIR(6));
         
-        std::string line2 = " [t]DemoRX [i]Info [a]ARP [Arrows]Log Scroll";
+        std::string line2 = " [i]Info [a]ARP [Arrows]Log Scroll";
         mvwaddnstr(win, 2, x + 4, line2.c_str(), maxWidth - 4);
     }
     wrefresh(win);
@@ -94,6 +102,7 @@ void drawArpTable(WINDOW* win, const std::unordered_map<std::uint32_t, ArpEntry>
     mvwaddnstr(win, 0, 2, " Tabla ARP ", w - 4);
 
     int y = 1;
+    mvwaddnstr(win, y++, 2, "REQ: who-has IP | REP: IP is-at MAC", w - 4);
     if (table.empty()) {
         mvwaddnstr(win, y++, 2, "Sin entradas", w - 4);
         mvwaddnstr(win, h - 2, 2, "[a] Cerrar", w - 4);
@@ -132,6 +141,23 @@ void drawSendMenu(WINDOW* win, bool customLoaded, std::size_t customSize) {
         mvwaddnstr(win, 4, 2, "Custom: NO cargado (usa [r] Recargar)", w - 4);
     }
     mvwaddnstr(win, 6, 2, "[m] Cerrar", w - 4);
+    wrefresh(win);
+}
+
+void drawReceiveMenu(WINDOW* win) {
+    int h, w;
+    getmaxyx(win, h, w);
+    (void)h;
+    werase(win);
+    box(win, 0, 0);
+
+    wattron(win, COLOR_PAIR(6));
+    mvwaddnstr(win, 0, 2, " Receive Menu ", w - 4);
+    wattroff(win, COLOR_PAIR(6));
+
+    mvwaddnstr(win, 1, 2, "[t] Demo RX (Ethernet Demo)", w - 4);
+    mvwaddnstr(win, 2, 2, "[p] Demo RX (ARP who-has)", w - 4);
+    mvwaddnstr(win, 4, 2, "[n] Cerrar", w - 4);
     wrefresh(win);
 }
 
@@ -655,6 +681,7 @@ int runTuiApp(TapDevice& tap) {
     WINDOW* logWin = newwin(logH, logW, headerH + breakdownH, logX);
     WINDOW* footerWin = newwin(footerH, termW, headerH + breakdownH + logH, 0);
     WINDOW* sendMenuWin = nullptr;
+    WINDOW* recvMenuWin = nullptr;
 
     LogBuffer log;
     std::string status = "Inicializando";
@@ -663,11 +690,21 @@ int runTuiApp(TapDevice& tap) {
     std::filesystem::path basePath = std::filesystem::current_path(ec);
     if (ec) basePath = ".";
     std::filesystem::path packetFile = basePath / "custom_packet.hex";
+    // If running from build/, prefer the parent folder for custom_packet.hex.
+    if (basePath.filename() == "build") {
+        std::filesystem::path parentFile = basePath.parent_path() / "custom_packet.hex";
+        packetFile = parentFile;
+    } else {
+        std::filesystem::path parentFile = basePath.parent_path() / "custom_packet.hex";
+        if (std::filesystem::exists(parentFile) && !std::filesystem::exists(packetFile)) {
+            packetFile = parentFile;
+        }
+    }
     std::string msg;
     if (ensureCustomPacketTemplate(packetFile, msg)) {
-        log.push("[INFO] " + msg);
+        log.push("[INFO] " + msg + " (" + packetFile.string() + ")");
     } else {
-        log.push("[WARN] " + msg);
+        log.push("[WARN] " + msg + " (" + packetFile.string() + ")");
     }
 
     auto customPacket = loadCustomPacket(packetFile);
@@ -683,6 +720,8 @@ int runTuiApp(TapDevice& tap) {
     const MacAddress myMac = MacAddress{0x02, 0x00, 0x00, 0x00, 0x00, 0x01};
     const Ipv4Address myIp = Ipv4Address{192, 168, 100, 50};
     const Ipv4Address arpTargetIp = Ipv4Address{192, 168, 100, 1};
+    const MacAddress demoPeerMac = MacAddress{0x02, 0x00, 0x00, 0x00, 0x00, 0x02};
+    const Ipv4Address demoPeerIp = Ipv4Address{192, 168, 100, 1};
 
     auto ipToKey = [](const Ipv4Address& ip) -> std::uint32_t {
         return (static_cast<std::uint32_t>(ip[0]) << 24) |
@@ -696,6 +735,7 @@ int runTuiApp(TapDevice& tap) {
     bool running = true;
     bool showInfo = false;
     bool showArpTable = false;
+    bool showReceiveMenu = false;
     int infoPage = 0;
     int scrollOffset = 0;
     std::optional<EthernetFrame> lastRxFrame;
@@ -704,6 +744,62 @@ int runTuiApp(TapDevice& tap) {
     int tick = 0;
     int lastTxTick = -100000;
     int lastRxTick = -100000;
+    std::string arpSummary = "-";
+    auto handleRxFrame = [&](const EthernetFrame& rxFrame, bool fromTap) {
+        lastRxFrame = rxFrame;
+        const std::string typeLabel = etherTypeLabel(rxFrame.etherType);
+        log.push("[RX] " + describeEthernetII(rxFrame) + " proto=" + typeLabel);
+        lastRxTick = tick;
+
+        if (rxFrame.etherType == EtherType::ARP) {
+            auto infoOpt = parseArpFrame(rxFrame);
+            if (infoOpt) {
+                const auto now = std::chrono::steady_clock::now();
+                const std::uint32_t key = ipToKey(infoOpt->senderIp);
+                ArpEntry& entry = arpTable[key];
+                entry.mac = infoOpt->senderMac;
+                entry.expiresAt = now + std::chrono::minutes(5);
+                entry.resolved = true;
+
+                if (infoOpt->opcode == 1) {
+                    arpSummary = "REQ who-has " +
+                                 std::to_string(infoOpt->targetIp[0]) + "." +
+                                 std::to_string(infoOpt->targetIp[1]) + "." +
+                                 std::to_string(infoOpt->targetIp[2]) + "." +
+                                 std::to_string(infoOpt->targetIp[3]) +
+                                 " tell " +
+                                 std::to_string(infoOpt->senderIp[0]) + "." +
+                                 std::to_string(infoOpt->senderIp[1]) + "." +
+                                 std::to_string(infoOpt->senderIp[2]) + "." +
+                                 std::to_string(infoOpt->senderIp[3]);
+                    log.push("[INFO] ARP REQ: " + arpSummary.substr(4));
+                } else if (infoOpt->opcode == 2) {
+                    arpSummary = "REP " +
+                                 std::to_string(infoOpt->senderIp[0]) + "." +
+                                 std::to_string(infoOpt->senderIp[1]) + "." +
+                                 std::to_string(infoOpt->senderIp[2]) + "." +
+                                 std::to_string(infoOpt->senderIp[3]) +
+                                 " is-at " + macToString(infoOpt->senderMac);
+                    log.push("[INFO] ARP REP: " + arpSummary.substr(4));
+                }
+            }
+
+            if (fromTap) {
+                std::string arpMsg;
+                auto arpReply = makeArpReply(rxFrame, myMac, myIp, arpMsg);
+                if (arpReply) {
+                    lastTxFrame = arpReply;
+                    auto bytes = serializeEthernetII(*arpReply);
+                    int sent = tap.write(bytes.data(), bytes.size());
+                    status = txResult(sent);
+                    log.push("[TX] " + arpMsg + " -> " + status);
+                    lastTxTick = tick;
+                    arpSummary = "REP " + arpMsg.substr(10);
+                }
+            }
+        }
+    };
+
     while (running) {
         ++tick;
         if (showInfo) {
@@ -714,6 +810,12 @@ int runTuiApp(TapDevice& tap) {
                 delwin(sendMenuWin);
                 sendMenuWin = nullptr;
             }
+            if (recvMenuWin) {
+                werase(recvMenuWin);
+                wrefresh(recvMenuWin);
+                delwin(recvMenuWin);
+                recvMenuWin = nullptr;
+            }
             drawInfo(stdscr, infoPage, tick, lastTxTick, lastRxTick);
         } else if (showArpTable) {
             if (sendMenuWin) {
@@ -722,7 +824,26 @@ int runTuiApp(TapDevice& tap) {
                 delwin(sendMenuWin);
                 sendMenuWin = nullptr;
             }
+            if (recvMenuWin) {
+                werase(recvMenuWin);
+                wrefresh(recvMenuWin);
+                delwin(recvMenuWin);
+                recvMenuWin = nullptr;
+            }
             drawArpTable(stdscr, arpTable);
+        } else if (showReceiveMenu) {
+            int const popupH = 6;
+            int const popupW = 34;
+            const int footerY = headerH + breakdownH + logH;
+            const int footerX = 2;
+            const int anchorX = footerX + 20; // encima de [n]
+            int popupX = std::min(std::max(0, anchorX), std::max(0, termW - popupW));
+            int popupY = std::min(std::max(0, footerY - popupH + 1), std::max(0, termH - popupH));
+
+            if (!recvMenuWin) {
+                recvMenuWin = newwin(popupH, popupW, popupY, popupX);
+            }
+            drawReceiveMenu(recvMenuWin);
         } else if (showSendMenu) {
             int const popupH = 7;
             int const popupW = 32;
@@ -743,8 +864,14 @@ int runTuiApp(TapDevice& tap) {
                 delwin(sendMenuWin);
                 sendMenuWin = nullptr;
             }
+            if (recvMenuWin) {
+                werase(recvMenuWin);
+                wrefresh(recvMenuWin);
+                delwin(recvMenuWin);
+                recvMenuWin = nullptr;
+            }
 
-            drawHeader(headerWin, tap.name(), status);
+            drawHeader(headerWin, tap.name(), status, arpSummary);
             drawLog(logWin, log, scrollOffset);
             if (txPanelWin) {
                 drawLastTxPanel(txPanelWin, lastTxFrame);
@@ -767,6 +894,7 @@ int runTuiApp(TapDevice& tap) {
                 if (showInfo) {
                     showSendMenu = false;
                     showArpTable = false;
+                    showReceiveMenu = false;
                 }
                 infoPage = 0;
             } else if (ch == 'a' || ch == 'A') {
@@ -774,14 +902,19 @@ int runTuiApp(TapDevice& tap) {
                 if (showArpTable) {
                     showSendMenu = false;
                     showInfo = false;
+                    showReceiveMenu = false;
                 }
             } else if (ch == '-' && showInfo) {
                 infoPage = (infoPage - 1 + 4) % 4;
             } else if (ch == '+' && showInfo) {
                 infoPage = (infoPage + 1) % 4;
             } else if (ch == 'm' || ch == 'M') {
-                if (!showInfo && !showArpTable) {
+                if (!showInfo && !showArpTable && !showReceiveMenu) {
                     showSendMenu = !showSendMenu;
+                }
+            } else if (ch == 'n' || ch == 'N') {
+                if (!showInfo && !showArpTable && !showSendMenu) {
+                    showReceiveMenu = !showReceiveMenu;
                 }
             } else if ((ch == 's' || ch == 'S') && showSendMenu) {
                 auto frame = makeDefaultDemoFrame(0);
@@ -791,6 +924,7 @@ int runTuiApp(TapDevice& tap) {
                 status = txResult(sent);
                 log.push("[TX] Demo 0x00 (" + std::to_string(bytes.size()) + "B) -> " + status);
                 lastTxTick = tick;
+                arpSummary = "-";
                 showSendMenu = false;
             } else if ((ch == 'd' || ch == 'D') && showSendMenu) {
                 std::string arpMsg;
@@ -802,6 +936,7 @@ int runTuiApp(TapDevice& tap) {
                     status = txResult(sent);
                     log.push("[TX] " + arpMsg + " -> " + status);
                     lastTxTick = tick;
+                    arpSummary = "REQ " + arpMsg.substr(12);
 
                     const auto now = std::chrono::steady_clock::now();
                     const std::uint32_t key = ipToKey(arpTargetIp);
@@ -814,6 +949,22 @@ int runTuiApp(TapDevice& tap) {
                     log.push("[WARN] " + status);
                 }
                 showSendMenu = false;
+            } else if ((ch == 't' || ch == 'T') && showReceiveMenu) {
+                auto demoFrame = makeDefaultDemoFrame(0);
+                handleRxFrame(demoFrame, false);
+                status = "RX Demo simulado (Ethernet)";
+                showReceiveMenu = false;
+            } else if ((ch == 'p' || ch == 'P') && showReceiveMenu) {
+                std::string arpMsg;
+                auto req = makeArpRequest(demoPeerMac, demoPeerIp, myIp, arpMsg);
+                if (req) {
+                    handleRxFrame(*req, false);
+                    status = "RX Demo simulado (ARP)";
+                } else {
+                    status = "Error creando ARP Demo";
+                    log.push("[WARN] " + status);
+                }
+                showReceiveMenu = false;
             } else if (ch == 'e' || ch == 'E') {
                 endwin();
                 openFileInEditor(packetFile, msg);
@@ -844,10 +995,10 @@ int runTuiApp(TapDevice& tap) {
                 customPacket = loadCustomPacket(packetFile);
                 if (customPacket) {
                     status = "Custom cargado: " + std::to_string(customPacket->size()) + " bytes";
-                    log.push("[INFO] [CUSTOM] Recargado OK");
+                    log.push("[INFO] [CUSTOM] Recargado OK (" + packetFile.string() + ")");
                 } else {
                     status = "Custom inválido";
-                    log.push("[WARN] [CUSTOM] Error de parseo");
+                    log.push("[WARN] [CUSTOM] Error de parseo (" + packetFile.string() + ")");
                 }
             } else if ((ch == 'c' || ch == 'C') && showSendMenu) {
                 if (!customPacket) {
@@ -886,13 +1037,10 @@ int runTuiApp(TapDevice& tap) {
                         status = "Error al guardar RX";
                     }
                 }
-            } else if (ch == 't' || ch == 'T') {
-                auto demoFrame = makeDefaultDemoFrame(0);
-                lastRxFrame = demoFrame;
-                const std::string typeLabel = etherTypeLabel(demoFrame.etherType);
-                log.push("[RX] Demo simulado: " + describeEthernetII(demoFrame) + " proto=" + typeLabel);
-                status = "RX Demo simulado (como si fuera del kernel)";
-                lastRxTick = tick;
+            } else if ((ch == 's' || ch == 'S' || ch == 'd' || ch == 'D' || ch == 'c' || ch == 'C') && !showSendMenu) {
+                status = "Abre el menu con [m] para enviar";
+            } else if ((ch == 't' || ch == 'T' || ch == 'p' || ch == 'P') && !showReceiveMenu) {
+                status = "Abre el menu con [n] para recibir";
             } else if (ch == KEY_UP) {
                 scrollOffset += 1; // Scroll up (back in history)
             } else if (ch == KEY_DOWN) {
@@ -909,33 +1057,7 @@ int runTuiApp(TapDevice& tap) {
             if (n > 0) {
                 auto frameOpt = parseEthernetII(rxBuffer.data(), n);
                 if (frameOpt) {
-                    lastRxFrame = frameOpt;
-                    const std::string typeLabel = etherTypeLabel(frameOpt->etherType);
-                    log.push("[RX] " + describeEthernetII(*frameOpt) + " proto=" + typeLabel);
-                    lastRxTick = tick;
-
-                    if (frameOpt->etherType == EtherType::ARP) {
-                        auto infoOpt = parseArpFrame(*frameOpt);
-                        if (infoOpt) {
-                            const auto now = std::chrono::steady_clock::now();
-                            const std::uint32_t key = ipToKey(infoOpt->senderIp);
-                            ArpEntry& entry = arpTable[key];
-                            entry.mac = infoOpt->senderMac;
-                            entry.expiresAt = now + std::chrono::minutes(5);
-                            entry.resolved = true;
-                        }
-                    }
-
-                    std::string arpMsg;
-                    auto arpReply = makeArpReply(*frameOpt, myMac, myIp, arpMsg);
-                    if (arpReply) {
-                        lastTxFrame = arpReply;
-                        auto bytes = serializeEthernetII(*arpReply);
-                        int sent = tap.write(bytes.data(), bytes.size());
-                        status = txResult(sent);
-                        log.push("[TX] " + arpMsg + " -> " + status);
-                        lastTxTick = tick;
-                    }
+                    handleRxFrame(*frameOpt, true);
                 } else {
                     log.push("[RX] " + std::to_string(n) + " bytes (raw)");
                     lastRxTick = tick;
@@ -966,6 +1088,9 @@ int runTuiApp(TapDevice& tap) {
     // if (breakdownWin) delwin(breakdownWin); REMOVED
     if (sendMenuWin) {
         delwin(sendMenuWin);
+    }
+    if (recvMenuWin) {
+        delwin(recvMenuWin);
     }
     delwin(footerWin);
     delwin(logWin);
